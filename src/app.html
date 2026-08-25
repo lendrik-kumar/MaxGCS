@@ -1,0 +1,22 @@
+<!doctype html>
+<!--
+  SPDX-License-Identifier: GPL-3.0-or-later
+  Copyright (C) 2026 Marc Hoffmann (b14ckyy)
+-->
+<html lang="en" style="color-scheme: dark;">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%sveltekit.assets%/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <style>
+      /* The app is a full-screen cockpit, not a scrollable page: never let trackpad/touch gestures
+         scroll-chain or bounce the whole frame (the per-panel scrollers handle their own overflow). */
+      html, body { overscroll-behavior: none; }
+    </style>
+    <title>Tauri + SvelteKit + Typescript App</title>
+    %sveltekit.head%
+  </head>
+  <body data-sveltekit-preload-data="hover">
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
+</html>

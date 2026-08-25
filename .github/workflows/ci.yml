@@ -1,0 +1,89 @@
+# Kite Ground Control - Continuous Integration
+#
+# Runs on every push and pull request.
+# Goal: Catch problems early (especially important for an AI-heavy codebase).
+#
+# Lightweight: static checks + compilation, no full Tauri bundle.
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: Check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      # --- Linux system dependencies for Tauri ---
+      - name: Install Linux system dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev \
+            libudev-dev \
+            patchelf
+
+      # --- Frontend ---
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Run svelte-check + TypeScript
+        run: npm run check
+
+      # --- Backend ---
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache cargo registry
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      # macOS bundles an ffmpeg sidecar (externalBin in tauri.macos.conf.json). Tauri's build script
+      # resolves that path during cargo check, so the sidecar must exist or the check aborts with
+      # "resource path binaries/ffmpeg-aarch64-apple-darwin doesn't exist". The release workflow already
+      # fetches it; the check job needs the same step. Other platforms have no sidecar, so skip them.
+      - name: Fetch bundled ffmpeg (macOS check needs the sidecar)
+        if: matrix.os == 'macos-latest'
+        run: bash scripts/fetch-ffmpeg-macos.sh
+
+      - name: Run cargo check
+        working-directory: src-tauri
+        run: cargo check --verbose
+
+      - name: Run clippy (warnings allowed — informational only)
+        working-directory: src-tauri
+        run: cargo clippy
+
+      - name: Run Rust unit tests
+        working-directory: src-tauri
+        run: cargo test --verbose
+

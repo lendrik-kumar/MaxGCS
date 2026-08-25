@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS-only Info.plist keys merged into the generated bundle by tauri-bundler.
+  Required so CoreBluetooth (btleplug BLE transport) is permitted: without a usage string modern
+  macOS denies Bluetooth central access. Mirrors the BLE capability Windows/Linux already have.
+  The camera usage string is required for the video panel's "Camera (device)" source: it uses
+  getUserMedia, which macOS blocks without a usage description. This covers USB/UVC capture devices
+  (e.g. an HDMI capture card fed from FPV goggles/VRX), the same webcam access Windows/Linux already have.
+-->
+<plist version="1.0">
+<dict>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Kite Ground Control uses Bluetooth to connect to your flight controller / telemetry link over BLE.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>Kite Ground Control uses Bluetooth to connect to your flight controller / telemetry link over BLE.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Kite Ground Control uses the camera to display an FPV video feed from a connected capture device.</string>
+</dict>
+</plist>

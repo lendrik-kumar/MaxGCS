@@ -1,0 +1,150 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Marc Hoffmann (b14ckyy)
+
+// MSP Message Types and Constants
+// Reference: INAV Configurator MSPCodes.js
+
+use serde::{Deserialize, Serialize};
+
+/// MSP protocol directions
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum MspDirection {
+    Request,  // '<' — from GCS to FC
+    Response, // '>' — from FC to GCS
+    Error,    // '!' — error response from FC
+}
+
+/// MSP protocol version
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum MspVersion {
+    V1,
+    V2,
+}
+
+/// A decoded MSP message
+#[derive(Debug, Clone)]
+pub struct MspMessage {
+    pub version: MspVersion,
+    pub direction: MspDirection,
+    pub code: u16,
+    pub payload: Vec<u8>,
+}
+
+// ── MSP v1 command codes ────────────────────────────────────────────
+pub const MSP_API_VERSION: u16 = 1;
+pub const MSP_FC_VARIANT: u16 = 2;
+pub const MSP_FC_VERSION: u16 = 3;
+pub const MSP_BOARD_INFO: u16 = 4;
+pub const MSP_NAME: u16 = 10;
+pub const MSP_SET_NAME: u16 = 11;
+pub const MSP_RC: u16 = 105;
+pub const MSP_RAW_GPS: u16 = 106;
+pub const MSP_ATTITUDE: u16 = 108;
+pub const MSP_ALTITUDE: u16 = 109;
+pub const MSP_ANALOG: u16 = 110;
+pub const MSP_SENSOR_STATUS: u16 = 151;
+pub const MSP_SET_REBOOT: u16 = 68;
+pub const MSP_EEPROM_WRITE: u16 = 250;
+pub const MSP_GPSSTATISTICS: u16 = 166;
+
+// --- Reference only: uncomment when needed (unused MSP message-id constants) ---
+// pub const MSP_BUILD_INFO: u16 = 5;
+// pub const MSP_STATUS: u16 = 101;
+// pub const MSP_RAW_IMU: u16 = 102;
+// pub const MSP_SERVO: u16 = 103;
+// pub const MSP_MOTOR: u16 = 104;
+// pub const MSP_COMP_GPS: u16 = 107;
+// pub const MSP_ACTIVEBOXES: u16 = 113;
+// pub const MSP_STATUS_EX: u16 = 150;
+// pub const MSP_BATTERY_STATE: u16 = 130;
+// pub const MSP_UID: u16 = 160;
+// pub const MSP_GPS_SV_INFO: u16 = 164;
+
+// ── Mission / Waypoint MSP v1 command codes ─────────────────────────
+// INAV: LOAD = 18 (load mission from NVRAM → RAM), SAVE = 19 (save RAM → NVRAM). These were previously
+// swapped here, so "EEPROM Save" actually sent LOAD (overwrote the upload with the old EEPROM, wrote
+// nothing) and "EEPROM Load" sent SAVE — i.e. mission EEPROM save never persisted.
+pub const MSP_WP_MISSION_LOAD: u16 = 18;
+pub const MSP_WP_MISSION_SAVE: u16 = 19;
+pub const MSP_WP_GETINFO: u16 = 20;
+pub const MSP_BOXIDS: u16 = 119;
+pub const MSP_WP: u16 = 118;
+pub const MSP_NAV_STATUS: u16 = 121;
+pub const MSP_SET_WP: u16 = 209;
+pub const MSP_MODE_RANGES: u16 = 34;
+
+// --- Reference only: uncomment when needed ---
+// pub const MSP_RX_CONFIG: u16 = 44;
+
+// ── RC control over MSP (see msp/rc_encode.rs, docs/archive/MSP_RC_CONTROL.md) ──
+pub const MSP_SET_RAW_RC: u16 = 200;
+pub const MSP2_INAV_SET_AUX_RC: u16 = 0x2230;
+/// Generic setting read/write by name (null-terminated) — used to read receiver_type /
+/// msp_override_channels and to fix the override bitmask.
+pub const MSP2_COMMON_SETTING: u16 = 0x1003;
+pub const MSP2_COMMON_SET_SETTING: u16 = 0x1004;
+
+// ── Safehome + fixed-wing autoland approach (INAV; see docs/active/AUTOLAND_SAFEHOME.md) ──
+// SAFEHOME is per-index (loop 0..7); FW_APPROACH per-index (0..7 = safehome, 8+ = mission LAND).
+pub const MSP2_INAV_SAFEHOME: u16 = 0x2038;
+pub const MSP2_INAV_SET_SAFEHOME: u16 = 0x2039;
+pub const MSP2_INAV_FW_APPROACH: u16 = 0x204A;
+pub const MSP2_INAV_SET_FW_APPROACH: u16 = 0x204B;
+
+// ── Geozones (INAV ≥8.0; see docs/active/GEOZONES.md) ──
+// GEOZONE is per-index (loop 0..62); GEOZONE_VERTEX per (zoneId, vertexId). A circle has vertexCount 1
+// (centre) with the radius appended to its vertex; a polygon has vertexCount = N vertices.
+pub const MSP2_INAV_GEOZONE: u16 = 0x2210;
+pub const MSP2_INAV_SET_GEOZONE: u16 = 0x2211;
+pub const MSP2_INAV_GEOZONE_VERTEX: u16 = 0x2212;
+pub const MSP2_INAV_SET_GEOZONE_VERTEX: u16 = 0x2213;
+
+// ── INAV MSP v2 command codes ───────────────────────────────────────
+pub const MSPV2_INAV_STATUS: u16 = 0x2000;
+pub const MSPV2_INAV_ANALOG: u16 = 0x2002;
+pub const MSPV2_INAV_AIR_SPEED: u16 = 0x2009;
+// --- Reference only: uncomment when needed ---
+// pub const MSPV2_INAV_MISC: u16 = 0x2003;
+// pub const MSPV2_INAV_BATTERY_CONFIG: u16 = 0x2005;
+pub const MSPV2_INAV_MIXER: u16 = 0x2010;
+/// INAV misc2: [uptime_s:u32, flight_time_s:u32, throttle_pct:u8, auto_throttle:u8] — INAV 2.x+.
+pub const MSP2_INAV_MISC2: u16 = 0x203A;
+/// INAV RC link statistics (uplink RSSI dBm / LQ / SNR) — INAV 9.1+.
+pub const MSP2_INAV_GET_LINK_STATS: u16 = 0x2103;
+/// INAV wind estimate (speed cm/s, angle deg, flags) — INAV 10.0+ (PR #11611).
+pub const MSP2_INAV_WIND: u16 = 0x2231;
+/// INAV ADS-B vehicle list (onboard receiver) — fed into the radar pipeline.
+pub const MSP2_ADSB_VEHICLE_LIST: u16 = 0x2090;
+
+// ── Jumbo frame threshold ───────────────────────────────────────────
+pub const JUMBO_FRAME_MIN_SIZE: u8 = 255;
+
+// ── FC info returned after handshake ────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct FcInfo {
+    /// MSP protocol version (e.g. 0)
+    pub msp_protocol: u8,
+    /// API version string (e.g. "2.5")
+    pub api_version: String,
+    /// Flight controller variant (e.g. "INAV")
+    pub fc_variant: String,
+    /// Flight controller firmware version (e.g. "7.1.2")
+    pub fc_version: String,
+    /// Board identifier (e.g. "MATF", "SPRF")
+    pub board_id: String,
+    /// Hardware revision
+    pub hardware_revision: u16,
+    /// Platform type from mixer config (0=Multirotor, 1=Airplane, 2=Helicopter, etc.)
+    pub platform_type: u8,
+    /// Applied mixer preset ID
+    pub mixer_preset: i16,
+    /// Version-dependent feature availability
+    pub features: Option<super::features::FeatureSet>,
+    /// Craft name configured in the FC (MSP_NAME)
+    pub craft_name: String,
+    /// MAVLink HEARTBEAT MAV_TYPE (ArduPilot/PX4 only; 0 for MSP). The reliable QuadPlane signal —
+    /// a QuadPlane reports fc_variant "ArduPlane" but a VTOL_* MAV_TYPE.
+    #[serde(default)]
+    pub mav_type: u8,
+}

@@ -1,0 +1,40 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Marc Hoffmann (b14ckyy)
+
+// Widget registry — defines all available widgets, their classes, and metadata
+
+export type WidgetClass = 'large' | 'small' | 'wide';
+
+export interface WidgetDef {
+  id: string;
+  label: string;
+  /** i18n key for the label — use with $t() in .svelte files */
+  labelKey: string;
+  widgetClass: WidgetClass;
+}
+
+export const WIDGET_DEFS: WidgetDef[] = [
+  { id: 'ahi',          label: 'AHI',            labelKey: 'widgets.ahi',          widgetClass: 'large' },
+  { id: 'speed',        label: 'Speed',          labelKey: 'widgets.speed',        widgetClass: 'small' },
+  { id: 'altitude',     label: 'Altitude',       labelKey: 'widgets.altitude',     widgetClass: 'small' },
+  { id: 'battery',      label: 'Battery',        labelKey: 'widgets.battery',      widgetClass: 'small' },
+  { id: 'battery2',     label: 'Battery 2',      labelKey: 'widgets.battery2',     widgetClass: 'small' },
+  { id: 'gps',          label: 'GPS',            labelKey: 'widgets.gps',          widgetClass: 'small' },
+  { id: 'rcLink',       label: 'RC Link',        labelKey: 'widgets.rcLink',       widgetClass: 'small' },
+  { id: 'compass',      label: 'Compass',        labelKey: 'widgets.compass',      widgetClass: 'large' },
+  { id: 'home',         label: 'Home',           labelKey: 'widgets.home',         widgetClass: 'small' },
+  { id: 'flightMode',   label: 'Flight Mode',    labelKey: 'widgets.flightMode',   widgetClass: 'small' },
+  { id: 'rawTelemetry', label: 'Raw Telemetry',  labelKey: 'widgets.rawTelemetry', widgetClass: 'small' },
+  { id: 'liveAgl',      label: 'Live AGL',       labelKey: 'widgets.liveAgl',      widgetClass: 'wide' },
+  { id: 'terrainRadar', label: 'Terrain Radar',  labelKey: 'widgets.terrainRadar', widgetClass: 'large' },
+  { id: 'videoFeed',    label: 'Video',          labelKey: 'widgets.video',        widgetClass: 'wide' },
+];
+
+export const WIDGET_MAP = new Map(WIDGET_DEFS.map(w => [w.id, w]));
+
+/** Large widget base size in vmin */
+export const LARGE_BASE_VMIN = 22.5;
+/** Small widget = 60% of large, always square */
+export const SMALL_BASE_VMIN = LARGE_BASE_VMIN * 0.6; // 13.5
+/** Minimum scale factor before panel is considered full */
+export const MIN_SCALE = 0.5;

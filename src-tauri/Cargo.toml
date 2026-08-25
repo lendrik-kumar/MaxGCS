@@ -1,0 +1,85 @@
+[package]
+name = "kite-gc"
+# NOT the app version source — bump only package.json. The app/bundle version comes from
+# package.json via tauri.conf.json (`"version": "../package.json"`); this is crate metadata only.
+version = "0.8.0"
+description = "Kite Ground Control — Universal Ground Control Station"
+authors = ["you"]
+license = "GPL-3.0-or-later"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "kite_gc_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dev-dependencies]
+# Full tokio runtime for async integration tests (#[tokio::test]); not in the release build
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync"] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-window-state = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_repr = "0.1"
+serialport = "4"
+log = "0.4"
+rusqlite = { version = "0.31", features = ["bundled"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls", "http2"], default-features = false }
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.9"  # IANA zone + date → UTC offset (DST-aware) for flight-local time display (ADR-048)
+tzf-rs = "0.4"     # coordinates → IANA timezone name (embedded boundary data) for log imports (ADR-048)
+csv = "1.3"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+tar = "0.4"        # extract blackbox_decode from the Linux/macOS .tar.zst release assets
+zstd = "0.13"      # decompress those .tar.zst assets (C-backed, like rusqlite's bundled SQLite)
+btleplug = "0.11"
+uuid = { version = "1", features = ["serde"] }
+dirs = "5"
+tokio = { version = "1", features = ["time", "sync", "macros"] }
+futures = "0.3"
+mavlink = { version = "0.17", default-features = false, features = ["std", "ardupilotmega", "emit-extensions"] }
+num-traits = "0.2"  # FromPrimitive for lossless MavCmd/MavFrame <-> int (mission codec round-trip)
+tiff = "0.9"  # decode Copernicus GLO-30 GeoTIFF DEM tiles (Float32, DEFLATE, predictor 3)
+starship-battery = "0.10"  # cross-platform AC/battery state (Windows + Linux + macOS) for the low-power 3D auto mode
+
+# HID / joystick input for GCS RC control (docs/archive/MSP_RC_CONTROL.md). Native per-OS backends read
+# RAW axes/buttons/hats (no gamepad projection) so flight hardware / RC transmitters map correctly:
+#   Windows → Windows.Gaming.Input RawGameController (the `windows` crate is already pulled by btleplug;
+#             we just add the Gaming_Input features). Linux → evdev (pure Rust, no libevdev).
+[target.'cfg(target_os = "windows")'.dependencies]
+# Read HKLM\...\Enum\BTHENUM to classify Bluetooth SPP COM ports (outgoing vs incoming) — see serial.rs.
+winreg = "0.52"
+
+[target.'cfg(target_os = "windows")'.dependencies.windows]
+version = "0.61"
+features = ["Gaming_Input", "Foundation_Collections"]
+
+[target.'cfg(target_os = "linux")'.dependencies]
+evdev = "0.13"
+# TIOCGSERIAL probe to hide phantom 8250 /dev/ttyS* stubs from the port list (serial.rs).
+libc = "0.2"
+# Access the underlying WebKitGTK WebView to pin its page zoom at 1.0 (lib.rs setup). On Linux the
+# trackpad pinch / Ctrl+wheel zoom is handled natively by GTK and ignores any JS preventDefault, so the
+# whole-frame zoom can only be suppressed here. Version must match the one wry/tauri pulls (unified by Cargo).
+webkit2gtk = "2.0"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# HID / joystick input backend (hid/macos.rs) reads RAW IOKit HID elements — axes/buttons/hat by
+# usage page/usage, no gamepad projection — matching the Windows (WGI) / Linux (evdev) backends. We
+# talk to the IOKit HID Manager C API directly (declared in macos.rs, linked to the IOKit framework);
+# these two crates provide the Core Foundation types (CFString/CFNumber/CFDictionary/CFArray/CFSet)
+# used to build the device-matching dictionaries and read device properties.
+core-foundation = "0.10"
+core-foundation-sys = "0.8"
+
