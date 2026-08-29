@@ -14,8 +14,11 @@
   //
   // No title bar (space is precious on a flight display). Layering: separate absolutely-positioned
   // layers share the page stacking context (the .float-win wrapper has no z-index). The map (rendered
-  // top-level in +page when swapped) composes between the frosted background (z 60) and the corner
-  // controls (z 62), so the mini-map stays interactive while close/resize stay usable.
+  // top-level in +page when swapped) composes between the frosted background (z 120) and the corner
+  // controls (z 122), so the mini-map stays interactive while close/resize stay usable. Pinned above
+  // the telemetry dock (.zone-bottom-dock, z 100) so a floating window dragged over the dock still
+  // shows on top of it, but below NavRail panels (PanelShell, z 150/160) and the toolbar/status-bar
+  // chrome (z 200).
   import { t } from 'svelte-i18n';
   import {
     videoStream,
@@ -315,17 +318,17 @@
   .fw-bg {
     position: absolute;
     inset: 0;
-    z-index: 60;
+    z-index: 120;
     pointer-events: none;
     background: rgba(46, 46, 46, 0.92);
-    border: 1px solid rgba(55, 168, 219, 0.35);
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.35));
     border-radius: 8px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   }
   .fw-body {
     position: absolute;
     inset: 0;
-    z-index: 61;
+    z-index: 121;
     pointer-events: auto;
     background: #000;
     overflow: hidden;
@@ -368,7 +371,7 @@
     top: 0;
     width: 26px;
     height: 26px;
-    z-index: 62;
+    z-index: 122;
     pointer-events: auto;
     box-sizing: border-box;
     touch-action: none;
@@ -395,9 +398,9 @@
     cursor: nesw-resize;
     border-radius: 0 8px 0 8px;
     /* visible grab affordance in the top-right corner */
-    background: linear-gradient(225deg, rgba(55, 168, 219, 0.85) 42%, transparent 42%);
+    background: linear-gradient(225deg, rgba(224, 48, 44, 0.85) 42%, transparent 42%);
   }
   .fw-resize:hover {
-    background: linear-gradient(225deg, rgba(55, 168, 219, 1) 50%, transparent 50%);
+    background: linear-gradient(225deg, rgba(224, 48, 44, 1) 50%, transparent 50%);
   }
 </style>

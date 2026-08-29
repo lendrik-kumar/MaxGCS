@@ -3143,10 +3143,10 @@
     right: 0;
     cursor: nesw-resize;
     border-radius: 0 8px 0 8px;
-    background: linear-gradient(225deg, rgba(55, 168, 219, 0.85) 42%, transparent 42%);
+    background: linear-gradient(225deg, rgba(224, 48, 44, 0.85) 42%, transparent 42%);
   }
   .mf-resize:hover {
-    background: linear-gradient(225deg, rgba(55, 168, 219, 1) 50%, transparent 50%);
+    background: linear-gradient(225deg, rgba(224, 48, 44, 1) 50%, transparent 50%);
   }
   /* Full-size video shown in the content area when swapped (videoPrimary). The wrapper holds the
      chrome inset + black backdrop; the video fills it. */
@@ -3199,6 +3199,9 @@
     pointer-events: none;
     overflow: visible;
     padding: 6px 0;
+    background: linear-gradient(180deg, rgba(40, 14, 14, 0.55) 0%, rgba(15, 7, 7, 0.85) 100%);
+    border-top: 1px solid var(--mx-border-strong, #46484e);
+    box-shadow: 0 -6px 24px rgba(224, 48, 44, 0.10);
   }
 
   .zone-bottom-dock.panel-editing {

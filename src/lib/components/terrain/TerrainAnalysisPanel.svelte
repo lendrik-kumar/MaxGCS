@@ -1040,9 +1040,9 @@
     gap: 4px;
   }
   .addwp-btn {
-    background: rgba(55, 168, 219, 0.15);
-    border: 1px solid rgba(55, 168, 219, 0.5);
-    color: #37a8db;
+    background: rgba(224, 48, 44, 0.15);
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.5));
+    color: var(--mx-red, #e0302c);
     border-radius: 6px;
     padding: 6px 10px;
     font-size: 12px;
@@ -1050,7 +1050,7 @@
     transition: background-color 0.15s;
   }
   .addwp-btn:hover:not(:disabled) {
-    background: rgba(55, 168, 219, 0.28);
+    background: rgba(224, 48, 44, 0.28);
   }
   .addwp-btn:disabled {
     opacity: 0.4;

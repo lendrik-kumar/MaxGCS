@@ -94,7 +94,7 @@
   .about-box {
     position: relative;
     background: #2e2e2e;
-    border: 1px solid rgba(55, 168, 219, 0.45);
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.45));
     border-radius: 10px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     padding: 22px 24px 16px;
@@ -119,18 +119,18 @@
   .about-row { display: grid; grid-template-columns: 84px 1fr; align-items: baseline; gap: 10px; font-size: 12px; }
   .about-k { color: #949494; }
   .about-v { color: #e0e0e0; }
-  .about-mono { font-family: 'Consolas', monospace; color: #37a8db; }
-  .about-link { background: none; border: none; padding: 0; color: #37a8db; cursor: pointer; font: inherit; text-align: left; }
+  .about-mono { font-family: 'Consolas', monospace; color: var(--mx-red, #e0302c); }
+  .about-link { background: none; border: none; padding: 0; color: var(--mx-red, #e0302c); cursor: pointer; font: inherit; text-align: left; }
   .about-link:hover { text-decoration: underline; }
 
   .about-fw { margin-top: 14px; }
-  .about-fw-head { font-size: 11px; font-weight: 700; color: #37a8db; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .about-fw-head { font-size: 11px; font-weight: 700; color: var(--mx-red, #e0302c); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
   .about-fw-list { display: flex; flex-direction: column; gap: 3px; }
   .about-fw-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: baseline; font-size: 12px; }
   .about-fw-lic { color: #949494; white-space: nowrap; }
 
   .about-tp { margin-top: 14px; }
-  .about-tp-head { font-size: 11px; font-weight: 700; color: #37a8db; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .about-tp-head { font-size: 11px; font-weight: 700; color: var(--mx-red, #e0302c); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
   .about-tp-scroll { max-height: 200px; overflow-y: auto; border: 1px solid #272727; border-radius: 6px; padding: 4px 8px; background: #262626; }
   .about-tp-group { font-size: 10.5px; font-weight: 700; color: #949494; text-transform: uppercase; letter-spacing: 0.4px; margin: 8px 0 2px; }
   .about-tp-group:first-child { margin-top: 2px; }
@@ -142,7 +142,7 @@
   .about-foot { display: flex; justify-content: flex-end; margin-top: 16px; }
   .about-close {
     padding: 6px 16px; font-size: 12px; font-weight: 600; border-radius: 4px;
-    border: 1px solid #37a8db; background: #37a8db; color: #fff; cursor: pointer;
+    border: 1px solid var(--mx-red, #e0302c); background: var(--mx-red, #e0302c); color: #fff; cursor: pointer;
   }
   .about-close:hover { background: #2e96c5; }
 </style>

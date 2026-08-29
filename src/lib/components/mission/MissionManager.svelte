@@ -579,32 +579,32 @@
   .mmv2-toolbtns { display: flex; align-items: center; gap: 6px; width: 100%; }
   /* Matches the framework form-control height (28px md button), like AutopilotSelect's .ap-select. */
   .fmt-filter { margin-left: auto; height: 28px; padding: 0 8px; font-size: 12px; color: #e0e0e0; background: #434343; border: 1px solid #555; border-radius: 4px; font-family: 'Segoe UI', Tahoma, sans-serif; cursor: pointer; }
-  .fmt-filter:focus { outline: none; border-color: #37a8db; }
+  .fmt-filter:focus { outline: none; border-color: var(--mx-red, #e0302c); }
 
   .mmv2-detail-actions { display: flex; flex: 1; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
 
-  .section-heading { margin: 8px 0 6px 0; font-size: 11px; font-weight: 600; color: #37a8db; text-transform: uppercase; letter-spacing: 0.5px; }
+  .section-heading { margin: 8px 0 6px 0; font-size: 11px; font-weight: 600; color: var(--mx-red, #e0302c); text-transform: uppercase; letter-spacing: 0.5px; }
 
   .mmv2-dropzone { position: relative; min-height: 100%; }
-  .mmv2-dropzone.drag-over { outline: 2px dashed #37a8db; outline-offset: -2px; border-radius: 4px; }
+  .mmv2-dropzone.drag-over { outline: 2px dashed var(--mx-red, #e0302c); outline-offset: -2px; border-radius: 4px; }
 
   .panel-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 40px 0; color: #555; font-size: 12px; }
   .panel-empty-icon { font-size: 28px; opacity: 0.4; }
 
   .tree-node { margin-bottom: 4px; }
   .tree-toggle { width: 100%; text-align: left; border: 1px solid #555; border-radius: 4px; background: #353535; color: #ddd; cursor: pointer; display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 5px 7px; font-size: 12px; font-weight: 600; }
-  .tree-toggle:hover { border-color: #37a8db; }
+  .tree-toggle:hover { border-color: var(--mx-red, #e0302c); }
   .tree-caret { color: #9cc6d9; font-size: 11px; line-height: 1; }
   .tree-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tree-count { font-size: 10px; color: #8fb4c5; background: rgba(55, 168, 219, 0.12); border: 1px solid rgba(55, 168, 219, 0.32); border-radius: 999px; padding: 1px 6px; }
+  .tree-count { font-size: 10px; color: #8fb4c5; background: var(--mx-red-dim, rgba(224, 48, 44, 0.12)); border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.32)); border-radius: 999px; padding: 1px 6px; }
   .tree-items { margin-top: 4px; margin-left: 12px; }
 
   .lib-item { width: calc(100% - 12px); text-align: left; border: 1px solid #555; border-radius: 4px; background: #383838; color: #ddd; margin-bottom: 4px; padding: 6px; cursor: pointer; }
-  .lib-item:hover { border-color: #37a8db; }
-  .lib-item.selected { border-color: #37a8db; background: rgba(55, 168, 219, 0.18); }
+  .lib-item:hover { border-color: var(--mx-red, #e0302c); }
+  .lib-item.selected { border-color: var(--mx-red, #e0302c); background: var(--mx-red-dim, rgba(224, 48, 44, 0.18)); }
   .lib-item-title { font-size: 12px; color: #fff; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .lib-item-meta { margin-top: 2px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 10px; color: #aaa; }
-  .fmt-badge { font-size: 9px; font-weight: 600; color: #9cc6d9; background: rgba(55, 168, 219, 0.14); border: 1px solid rgba(55, 168, 219, 0.34); border-radius: 999px; padding: 0 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .fmt-badge { font-size: 9px; font-weight: 600; color: #9cc6d9; background: var(--mx-red-dim, rgba(224, 48, 44, 0.14)); border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.34)); border-radius: 999px; padding: 0 6px; text-transform: uppercase; letter-spacing: 0.4px; }
 
   .mmv2-detail { display: flex; flex-direction: column; gap: 10px; overflow-anchor: none; }
   .preview-wrap { width: 100%; max-height: 300px; flex-shrink: 0; overflow: hidden; border-radius: 4px; }
@@ -613,7 +613,7 @@
   .fld { display: block; }
   .fld-label { display: block; font-size: 11px; font-weight: 600; color: #949494; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; }
   .fld-input { box-sizing: border-box; width: 100%; padding: 5px 7px; font-size: 12px; color: #e0e0e0; background: #1f1f1f; border: 1px solid #444; border-radius: 4px; font-family: 'Segoe UI', Tahoma, sans-serif; }
-  .fld-input:focus { outline: none; border-color: #37a8db; }
+  .fld-input:focus { outline: none; border-color: var(--mx-red, #e0302c); }
   .fld-area { resize: vertical; }
 
   .fc-info-grid { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 10px; font-size: 12px; }
@@ -622,12 +622,12 @@
 
   .det-flights { border-top: 1px solid #333; padding-top: 8px; }
   .flight-row { width: 100%; box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: #e0e0e0; padding: 4px 6px; background: none; border: none; border-radius: 4px; cursor: pointer; text-align: left; }
-  .flight-row:hover { background: rgba(55, 168, 219, 0.15); }
+  .flight-row:hover { background: rgba(224, 48, 44, 0.15); }
   .flight-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .flight-meta { color: #888; flex-shrink: 0; }
   .flight-none { color: #777; font-size: 12px; padding: 4px 0; }
 
-  .drop-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(55, 168, 219, 0.18); border: 2px dashed #37a8db; border-radius: 6px; color: #fff; font-weight: 600; pointer-events: none; z-index: 10; }
+  .drop-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(224, 48, 44, 0.18); border: 2px dashed var(--mx-red, #e0302c); border-radius: 6px; color: #fff; font-weight: 600; pointer-events: none; z-index: 10; }
 
   .mmv2-status { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 1001; padding: 6px 12px; font-size: 11px; color: #f39c12; background: rgba(0, 0, 0, 0.8); border-radius: 6px; }
 </style>

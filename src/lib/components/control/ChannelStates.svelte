@@ -63,13 +63,13 @@
   .cs-source { color: #6f6f6f; font-size: 10px; font-style: italic; margin-bottom: 2px; }
   .cs-source.live { color: #7ec850; font-style: normal; font-weight: 700; }
   .cs-group {
-    color: #37a8db; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
-    margin: 6px 0 2px; padding-bottom: 3px; border-bottom: 1px solid rgba(55, 168, 219, 0.25);
+    color: var(--mx-red, #e0302c); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+    margin: 6px 0 2px; padding-bottom: 3px; border-bottom: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.25));
   }
   .cs-group:first-child { margin-top: 0; }
   .cs-row { display: grid; grid-template-columns: 110px 1fr 42px; align-items: center; gap: 8px; }
   .cs-label { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
-  .cs-num { color: #37a8db; font-weight: 700; font-size: 12px; flex: none; }
+  .cs-num { color: var(--mx-red, #e0302c); font-weight: 700; font-size: 12px; flex: none; }
   .cs-name { color: #cfcfcf; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cs-val { color: #e0e0e0; font-size: 11px; font-variant-numeric: tabular-nums; text-align: right; }
   .cs-bar {
@@ -77,5 +77,5 @@
     border-radius: 3px; overflow: hidden;
   }
   .cs-centre { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: #4a4a4a; }
-  .cs-fill { position: absolute; left: 0; top: 0; bottom: 0; background: #37a8db; }
+  .cs-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--mx-red, #e0302c); }
 </style>

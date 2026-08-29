@@ -91,8 +91,8 @@
     width: 100%;
     height: 34px;
     border-radius: 18px;
-    border: 1px solid var(--as-border, #37a8db);
-    background: var(--as-bg, rgba(55, 168, 219, 0.1));
+    border: 1px solid var(--as-border, #e0302c);
+    background: var(--as-bg, rgba(224, 48, 44, 0.1));
     overflow: hidden;
     user-select: none;
     touch-action: none;
@@ -127,7 +127,7 @@
     height: 30px;
     border-radius: 50%;
     border: none;
-    background: var(--as-knob, #37a8db);
+    background: var(--as-knob, #e0302c);
     color: #11181d;
     cursor: grab;
     display: flex;

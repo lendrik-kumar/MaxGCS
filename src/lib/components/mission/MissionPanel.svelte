@@ -91,13 +91,13 @@
   }
   .switch-dialog {
     background: #2e2e2e;
-    border: 1px solid #37a8db;
+    border: 1px solid var(--mx-red, #e0302c);
     border-radius: 6px;
     padding: 16px;
     max-width: 280px;
     width: 90%;
   }
-  .switch-title { font-size: 14px; font-weight: bold; color: #37a8db; margin-bottom: 8px; }
+  .switch-title { font-size: 14px; font-weight: bold; color: var(--mx-red, #e0302c); margin-bottom: 8px; }
   .switch-body { font-size: 12px; color: #ccc; margin: 0 0 12px; line-height: 1.5; }
   .switch-actions { display: flex; flex-direction: column; gap: 6px; }
   .btn-switch-confirm { width: 100%; padding: 7px; background: #c0392b; border: none; border-radius: 4px; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }

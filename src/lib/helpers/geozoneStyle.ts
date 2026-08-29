@@ -3,7 +3,7 @@
 
 // Visual styling for INAV geozones. Shared by the 2D map, the 3D view and the Airspace Manager panel
 // list. Colours are intentionally our own (not the INAV-configurator green/red): Inclusive (Flight-Zone)
-// = blue (the app accent), Exclusive (No-Flight-Zone) = amber. The line-style / fill scheme by FENCE
+// = red (the app accent), Exclusive (No-Flight-Zone) = amber. The line-style / fill scheme by FENCE
 // ACTION is adopted from MWPTools' geozone manager (mwp-geozonemgr.vala, the scheme worked out with the
 // INAV author): None = dashed thin no-fill; Avoid = solid thin; Pos-Hold/RTH = solid thick. A
 // translucent area fill is added for every exclusive zone with a real action, and only for an inclusive
@@ -14,8 +14,8 @@ import {
   GEOZONE_ACTION_NONE, GEOZONE_ACTION_POSHOLD, GEOZONE_ACTION_RTH, type GeoZone,
 } from '$lib/stores/geozone';
 
-/** Inclusive / Flight-Zone — blue (the app accent). */
-export const GEOZONE_INCLUSIVE_COLOR = '#37a8db';
+/** Inclusive / Flight-Zone — red (the app accent). */
+export const GEOZONE_INCLUSIVE_COLOR = '#e0302c';
 /** Exclusive / No-Flight-Zone — amber. */
 export const GEOZONE_EXCLUSIVE_COLOR = '#f5a623';
 

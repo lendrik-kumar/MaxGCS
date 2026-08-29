@@ -3,14 +3,14 @@
 
 // Visual styling for ArduPilot/PX4 geofences. Shared by the 2D map, the 3D view and the Airspace
 // Manager panel. Colours match the INAV geozone scheme for consistency (see helpers/geozoneStyle.ts):
-// Inclusion (must stay inside) = blue (the app accent), Exclusion (no-fly) = amber. Fences have no
+// Inclusion (must stay inside) = red (the app accent), Exclusion (no-fly) = amber. Fences have no
 // per-zone action/altitude (those are global params), so the style is simpler than geozones: a solid
 // outline + a translucent area fill for every zone. See docs/active/GEOFENCE.md.
 
 import { FENCE_KIND_INCLUSION, FENCE_SHAPE_CIRCLE, type FenceZone } from '$lib/stores/fence';
 
-/** Inclusion / keep-in fence — blue (the app accent). */
-export const FENCE_INCLUSION_COLOR = '#37a8db';
+/** Inclusion / keep-in fence — red (the app accent). */
+export const FENCE_INCLUSION_COLOR = '#e0302c';
 /** Exclusion / keep-out fence — amber. */
 export const FENCE_EXCLUSION_COLOR = '#f5a623';
 

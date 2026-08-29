@@ -742,7 +742,7 @@
     margin: 0 0 6px 0;
     font-size: 11px;
     font-weight: 600;
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
@@ -812,11 +812,11 @@
     line-height: 1.45;
     margin: 4px 0 0 0;
   }
-  .cesium-hint a { color: #37a8db; }
+  .cesium-hint a { color: var(--mx-red, #e0302c); }
 
   .cache-bar-container { display: flex; align-items: center; gap: 6px; padding: 4px 0 2px 0; }
   .cache-bar-track { flex: 1; height: 6px; background: #333; border-radius: 3px; overflow: hidden; }
-  .cache-bar-fill { height: 100%; background: #37a8db; border-radius: 3px; transition: width 0.3s ease; }
+  .cache-bar-fill { height: 100%; background: var(--mx-red, #e0302c); border-radius: 3px; transition: width 0.3s ease; }
   .cache-bar-fill.cache-bar-warning { background: #e8a317; }
   .cache-bar-label { font-size: 9px; color: #888; white-space: nowrap; }
   .cache-inline { display: flex; align-items: center; gap: 8px; }

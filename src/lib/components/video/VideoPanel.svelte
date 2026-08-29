@@ -818,7 +818,7 @@
     height: 28px;
     min-width: 30px;
     padding: 0 6px;
-    background: #37a8db;
+    background: var(--mx-red, #e0302c);
     color: #fff;
     border: none;
     border-radius: 4px;
@@ -837,7 +837,7 @@
     border-radius: 4px;
     padding: 3px 4px 3px 6px;
   }
-  .rtsp-item.active { border-color: rgba(55, 168, 219, 0.75); }
+  .rtsp-item.active { border-color: var(--mx-red-dim, rgba(224, 48, 44, 0.75)); }
   .rtsp-item-main {
     flex: 1;
     min-width: 0;
@@ -853,7 +853,7 @@
     padding: 3px 2px;
     font-size: 12px;
   }
-  .rtsp-item-main:hover .rtsp-item-name { color: #37a8db; }
+  .rtsp-item-main:hover .rtsp-item-name { color: var(--mx-red, #e0302c); }
   .rtsp-item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .rtsp-item-transport { flex: 0 0 auto; font-size: 10px; color: #949494; letter-spacing: 0.04em; }
   .rtsp-item-btn {
@@ -899,7 +899,7 @@
     border-radius: 3px;
     overflow: hidden;
   }
-  .dl-fill { height: 100%; background: #37a8db; transition: width 0.2s ease; }
+  .dl-fill { height: 100%; background: var(--mx-red, #e0302c); transition: width 0.2s ease; }
   .dl-pct { font-size: 11px; color: #9ad0e8; font-variant-numeric: tabular-nums; min-width: 30px; text-align: right; }
 
   .vp-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }

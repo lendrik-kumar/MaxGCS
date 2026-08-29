@@ -60,13 +60,13 @@
 
 <style>
   .dialog-backdrop { position: fixed; inset: 0; z-index: 9999; background: rgba(0, 0, 0, 0.55); display: flex; align-items: center; justify-content: center; }
-  .dialog-box { background: #2e2e2e; border: 1px solid rgba(55, 168, 219, 0.45); border-radius: 8px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); padding: 20px 24px 16px; min-width: 360px; max-width: 480px; }
+  .dialog-box { background: #2e2e2e; border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.45)); border-radius: 8px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); padding: 20px 24px 16px; min-width: 360px; max-width: 480px; }
   .dialog-title { font-size: 14px; font-weight: 700; color: #e0e0e0; margin-bottom: 10px; }
   .ck-text { font-size: 13px; color: #c4c4c4; line-height: 1.5; margin: 0 0 8px; }
-  .ck-link { display: inline-block; font-size: 12px; color: #37a8db; margin-bottom: 12px; }
+  .ck-link { display: inline-block; font-size: 12px; color: var(--mx-red, #e0302c); margin-bottom: 12px; }
   .ck-link:hover { text-decoration: underline; }
   .ck-input { box-sizing: border-box; width: 100%; padding: 6px 8px; font-size: 13px; color: #e0e0e0; background: #1f1f1f; border: 1px solid #444; border-radius: 4px; font-family: 'Segoe UI', Tahoma, sans-serif; margin-bottom: 14px; }
-  .ck-input:focus { outline: none; border-color: #37a8db; }
+  .ck-input:focus { outline: none; border-color: var(--mx-red, #e0302c); }
 
   .dialog-buttons { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
   .ck-spacer { flex: 1 1 auto; }

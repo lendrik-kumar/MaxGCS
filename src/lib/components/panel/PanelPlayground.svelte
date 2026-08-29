@@ -118,16 +118,16 @@
     padding: 2px 7px; font-size: 10px; border: 1px solid #555; border-radius: 4px;
     background: #2a2a2a; color: #aaa; cursor: pointer; text-transform: uppercase;
   }
-  .pg-sw:hover { background: rgba(55, 168, 219, 0.18); color: #e0e0e0; }
-  .pg-sw.active { border-color: #37a8db; color: #37a8db; background: rgba(55, 168, 219, 0.15); }
+  .pg-sw:hover { background: var(--mx-red-dim, rgba(224, 48, 44, 0.18)); color: #e0e0e0; }
+  .pg-sw.active { border-color: var(--mx-red, #e0302c); color: var(--mx-red, #e0302c); background: var(--mx-red-dim, rgba(224, 48, 44, 0.15)); }
 
   .pg-ph {
-    border: 1px dashed rgba(55, 168, 219, 0.4); border-radius: 4px;
-    color: #8aa; background: rgba(55, 168, 219, 0.05);
+    border: 1px dashed var(--mx-red-dim, rgba(224, 48, 44, 0.4)); border-radius: 4px;
+    color: #8aa; background: var(--mx-red-dim, rgba(224, 48, 44, 0.05));
   }
   .pg-ph-row { padding: 6px 8px; font-size: 11px; text-align: center; }
   .pg-fill { height: 100%; padding: 8px; }
-  .pg-note { color: #37a8db; font-size: 11px; margin-bottom: 6px; }
+  .pg-note { color: var(--mx-red, #e0302c); font-size: 11px; margin-bottom: 6px; }
   .pg-line {
     padding: 5px 8px; margin-bottom: 4px; font-size: 12px; color: #bbb;
     background: #353535; border: 1px solid #444; border-radius: 4px;

@@ -245,7 +245,7 @@
 
 <style>
   .dialog-backdrop { position: fixed; inset: 0; z-index: 9999; background: rgba(0, 0, 0, 0.55); display: flex; align-items: center; justify-content: center; }
-  .dialog-box { background: #2e2e2e; border: 1px solid rgba(55, 168, 219, 0.45); border-radius: 8px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); padding: 20px 24px 16px; min-width: 340px; max-width: 460px; }
+  .dialog-box { background: #2e2e2e; border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.45)); border-radius: 8px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); padding: 20px 24px 16px; min-width: 340px; max-width: 460px; }
   .dialog-title { font-size: 14px; font-weight: 700; color: #e0e0e0; margin-bottom: 14px; }
 
   .fc-info-grid { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; font-size: 13px; }
@@ -258,7 +258,7 @@
   .fld { display: block; margin-bottom: 12px; }
   .fld-label { display: block; font-size: 11px; font-weight: 600; color: #949494; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
   .fld-input { box-sizing: border-box; width: 100%; padding: 6px 8px; font-size: 13px; color: #e0e0e0; background: #1f1f1f; border: 1px solid #444; border-radius: 4px; font-family: 'Segoe UI', Tahoma, sans-serif; }
-  .fld-input:focus { outline: none; border-color: #37a8db; }
+  .fld-input:focus { outline: none; border-color: var(--mx-red, #e0302c); }
   .fld-area { resize: vertical; }
 
   /* Battery serial combobox: filter input + dropdown of existing packs. */
@@ -275,13 +275,13 @@
     padding: 5px 8px; border: none; border-radius: 3px; background: transparent;
     color: #e0e0e0; font-size: 12px; text-align: left; cursor: pointer;
   }
-  .battery-opt:hover { background: rgba(55, 168, 219, 0.18); }
+  .battery-opt:hover { background: rgba(224, 48, 44, 0.18); }
   .bo-serial { font-weight: 600; }
   .bo-meta { color: #949494; font-size: 11px; }
-  .battery-new-hint { display: block; margin-top: 4px; font-size: 11px; color: #37a8db; }
+  .battery-new-hint { display: block; margin-top: 4px; font-size: 11px; color: var(--mx-red, #e0302c); }
 
   .ef-check { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #e0e0e0; margin-bottom: 12px; cursor: pointer; }
-  .ef-check input { accent-color: #37a8db; }
+  .ef-check input { accent-color: var(--mx-red, #e0302c); }
 
   .ef-discard-warn { font-size: 12px; color: #f0b0b0; background: rgba(212, 0, 0, 0.12); border: 1px solid rgba(212, 0, 0, 0.4); border-radius: 4px; padding: 8px 10px; margin: 10px 0 12px; }
 

@@ -60,9 +60,9 @@
     flex-direction: column;
     justify-content: center;
     padding: calc(var(--ws) * 0.06);
-    background: rgba(30, 30, 30, 0.75);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(20, 8, 8, 0.18);
+    backdrop-filter: blur(6px);
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.35));
     border-radius: calc(var(--ws) * 0.08);
     gap: calc(var(--ws) * 0.01);
     box-sizing: border-box;
@@ -75,7 +75,7 @@
   .rtk {
     font-size: calc(var(--ws) * 0.09);
     font-weight: 600;
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
   }
   .rtv {
     font-size: calc(var(--ws) * 0.09);

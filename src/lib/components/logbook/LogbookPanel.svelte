@@ -633,7 +633,7 @@
   }
 
   .logbook-tree-toggle:hover {
-    border-color: #37a8db;
+    border-color: var(--mx-red, #e0302c);
   }
 
   .logbook-tree-toggle-top {
@@ -681,8 +681,8 @@
   .logbook-tree-count {
     font-size: 10px;
     color: #8fb4c5;
-    background: rgba(55, 168, 219, 0.12);
-    border: 1px solid rgba(55, 168, 219, 0.32);
+    background: var(--mx-red-dim, rgba(224, 48, 44, 0.12));
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.32));
     border-radius: 999px;
     padding: 1px 6px;
   }
@@ -700,18 +700,18 @@
   }
 
   .logbook-item:hover {
-    border-color: #37a8db;
+    border-color: var(--mx-red, #e0302c);
   }
 
   .logbook-item.selected {
-    border-color: #37a8db;
-    background: rgba(55, 168, 219, 0.18);
+    border-color: var(--mx-red, #e0302c);
+    background: var(--mx-red-dim, rgba(224, 48, 44, 0.18));
   }
 
   .logbook-item.multi-selected {
-    border-color: #37a8db;
-    background: rgba(55, 168, 219, 0.12);
-    outline: 1px solid rgba(55, 168, 219, 0.4);
+    border-color: var(--mx-red, #e0302c);
+    background: var(--mx-red-dim, rgba(224, 48, 44, 0.12));
+    outline: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.4));
     outline-offset: -1px;
   }
 
@@ -745,9 +745,9 @@
   }
 
   .logbook-progress {
-    border: 1px solid rgba(55, 168, 219, 0.35);
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.35));
     border-radius: 6px;
-    background: rgba(55, 168, 219, 0.08);
+    background: var(--mx-red-dim, rgba(224, 48, 44, 0.08));
     padding: 8px;
     margin-bottom: 10px;
   }
@@ -769,7 +769,7 @@
 
   .logbook-progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #2d8ab8, #37a8db);
+    background: linear-gradient(90deg, #a82520, #e0302c);
     transition: width 0.2s ease;
   }
 

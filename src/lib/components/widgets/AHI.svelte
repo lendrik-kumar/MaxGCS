@@ -169,7 +169,7 @@
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.3);
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    background: rgba(20, 8, 8, 0.18);
+    box-shadow: 0 0 10px var(--mx-red-dim, rgba(224, 48, 44, 0.35));
   }
 </style>

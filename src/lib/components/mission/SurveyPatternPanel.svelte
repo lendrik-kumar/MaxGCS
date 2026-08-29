@@ -883,7 +883,7 @@
   }
 
   .toggle-row input[type="checkbox"] {
-    accent-color: #37a8db;
+    accent-color: var(--mx-red, #e0302c);
   }
 
   .spacing-wrapper {
@@ -959,7 +959,7 @@
   }
 
   .ua-check-item input[type="checkbox"] {
-    accent-color: #37a8db;
+    accent-color: var(--mx-red, #e0302c);
     margin: 0;
   }
 
@@ -1004,7 +1004,7 @@
   .survey-header h4 {
     margin: 0;
     font-size: 14px;
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
     display: inline;
   }
 
@@ -1030,30 +1030,30 @@
   .btn-primary {
     width: 100%;
     padding: 6px 12px;
-    background: #1a3a5c;
-    border: 1px solid #37a8db;
+    background: #3a1512;
+    border: 1px solid var(--mx-red, #e0302c);
     border-radius: 4px;
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
     cursor: pointer;
     font-size: 13px;
     font-weight: 600;
   }
   .btn-primary:hover {
-    background: #37a8db;
+    background: var(--mx-red, #e0302c);
     color: #fff;
   }
 
   .btn-ctrl {
     padding: 5px 6px;
-    border: 1px solid #37a8db;
+    border: 1px solid var(--mx-red, #e0302c);
     border-radius: 4px;
-    background: #1a3a5c;
-    color: #37a8db;
+    background: #3a1512;
+    color: var(--mx-red, #e0302c);
     cursor: pointer;
     font-size: 12px;
     white-space: nowrap;
   }
-  .btn-ctrl:hover:not(:disabled) { background: #37a8db; color: #fff; }
+  .btn-ctrl:hover:not(:disabled) { background: var(--mx-red, #e0302c); color: #fff; }
   .btn-ctrl:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn-ctrl.btn-file { border-color: #555; background: #2a2a2a; color: #ccc; }
   .btn-ctrl.btn-file:hover { background: #3a3a3a; }

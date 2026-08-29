@@ -115,7 +115,7 @@
 
   .dialog-box {
     background: #2e2e2e;
-    border: 1px solid rgba(55, 168, 219, 0.45);
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.45));
     border-radius: 8px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     padding: 20px 24px 16px;
@@ -147,7 +147,7 @@
     margin: -6px 0 14px;
     cursor: pointer;
   }
-  .dialog-check input { accent-color: #37a8db; }
+  .dialog-check input { accent-color: var(--mx-red, #e0302c); }
 
   .dialog-buttons {
     display: flex;

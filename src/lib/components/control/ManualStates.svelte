@@ -87,8 +87,8 @@
   .ms-source { color: #6f6f6f; font-size: 10px; font-style: italic; margin-bottom: 2px; }
   .ms-source.live { color: #7ec850; font-style: normal; font-weight: 700; }
   .ms-group {
-    color: #37a8db; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
-    margin: 6px 0 2px; padding-bottom: 3px; border-bottom: 1px solid rgba(55, 168, 219, 0.25);
+    color: var(--mx-red, #e0302c); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+    margin: 6px 0 2px; padding-bottom: 3px; border-bottom: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.25));
   }
   .ms-row { display: grid; grid-template-columns: 80px 1fr 48px; align-items: center; gap: 8px; }
   .ms-label { color: #cfcfcf; font-size: 11px; }
@@ -98,7 +98,7 @@
     border-radius: 3px; overflow: hidden;
   }
   .ms-centre { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: #4a4a4a; }
-  .ms-fill { position: absolute; top: 0; bottom: 0; background: #37a8db; }
+  .ms-fill { position: absolute; top: 0; bottom: 0; background: var(--mx-red, #e0302c); }
   .ms-buttons { display: flex; flex-wrap: wrap; gap: 4px; }
   .ms-btn {
     min-width: 22px; height: 20px; padding: 0 5px; display: inline-flex; align-items: center;

@@ -89,8 +89,8 @@
     min-height: 30px;
     padding: 5px 10px;
     border-radius: 5px;
-    border: 1px solid var(--htc-border, #37a8db);
-    background: var(--htc-bg, rgba(55, 168, 219, 0.12));
+    border: 1px solid var(--htc-border, #e0302c);
+    background: var(--htc-bg, rgba(224, 48, 44, 0.12));
     color: var(--htc-fg, #cfe8f4);
     font-size: 12px;
     font-weight: 600;
@@ -118,7 +118,7 @@
     left: 0;
     top: 0;
     bottom: 0;
-    background: var(--htc-fill, rgba(55, 168, 219, 0.55));
+    background: var(--htc-fill, rgba(224, 48, 44, 0.55));
     pointer-events: none;
   }
 

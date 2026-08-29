@@ -73,7 +73,7 @@
 
       <!-- Cardinal labels -->
       <text x="100" y="50" text-anchor="middle" dominant-baseline="middle"
-            fill="#ff4444" font-size="25" font-weight="bold" font-family="sans-serif">{$t('compass.n')}</text>
+            fill="var(--mx-red-bright, #ff4d47)" font-size="25" font-weight="bold" font-family="sans-serif">{$t('compass.n')}</text>
       <text x="152" y="104" text-anchor="middle" dominant-baseline="middle"
             fill="white" font-size="22" font-weight="600" opacity="0.8" font-family="sans-serif">{$t('compass.e')}</text>
       <text x="100" y="155" text-anchor="middle" dominant-baseline="middle"
@@ -132,7 +132,8 @@
     width: var(--ws);
     height: var(--ws);
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.5);
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    background: rgba(20, 8, 8, 0.18);
+    backdrop-filter: blur(6px);
+    box-shadow: 0 0 10px var(--mx-red-dim, rgba(224, 48, 44, 0.35));
   }
 </style>

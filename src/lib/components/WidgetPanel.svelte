@@ -531,7 +531,7 @@
 
   /* Edit mode: show panel outline, accept drops */
   .widget-panel.editing {
-    outline: 2px dashed rgba(55, 168, 219, 0.7);
+    outline: 2px dashed var(--mx-red-dim, rgba(224, 48, 44, 0.7));
     outline-offset: 4px;
     border-radius: 8px;
     min-width: 40px;
@@ -542,7 +542,7 @@
 
   .widget-panel.editing.empty {
     outline-style: dotted;
-    outline-color: rgba(55, 168, 219, 0.5);
+    outline-color: var(--mx-red-dim, rgba(224, 48, 44, 0.5));
   }
 
   .widget-panel.horizontal.editing.empty {
@@ -633,7 +633,7 @@
     left: 50%;
     transform: translateX(-50%);
     font-size: 14px;
-    color: rgba(55, 168, 219, 0.7);
+    color: var(--mx-red-dim, rgba(224, 48, 44, 0.7));
     z-index: 10;
     pointer-events: none;
     line-height: 1;
@@ -652,7 +652,7 @@
     transform: translate(-50%, -50%);
     pointer-events: none;
     z-index: 1000;
-    border: 1px solid rgba(55, 168, 219, 0.75);
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.75));
     border-radius: 8px;
     background: rgba(30, 30, 30, 0.48);
     backdrop-filter: blur(4px);

@@ -454,9 +454,9 @@
   .widget-card {
     position: relative;
     box-sizing: border-box;
-    background: rgba(30, 30, 30, 0.75);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(20, 8, 8, 0.18);
+    backdrop-filter: blur(6px);
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.35));
     border-radius: 8px;
     overflow: hidden;
   }
@@ -479,14 +479,14 @@
   }
   .hist-line {
     fill: none;
-    stroke: #37a8db;
+    stroke: var(--mx-red, #e0302c);
     stroke-width: 2;
     stroke-linejoin: round;
     stroke-linecap: round;
   }
   .fwd-line {
     fill: none;
-    stroke: #37a8db;
+    stroke: var(--mx-red, #e0302c);
     stroke-width: 2;
     stroke-dasharray: 6 4;
     stroke-linejoin: round;
@@ -499,7 +499,7 @@
     stroke-dasharray: 3 3;
   }
   .uav-ring {
-    fill: rgba(55, 168, 219, 0.25);
+    fill: var(--mx-red-dim, rgba(224, 48, 44, 0.25));
     stroke: #ffffff;
     stroke-width: 2;
   }
@@ -531,7 +531,7 @@
   }
   .r-label {
     font-weight: 600;
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }

@@ -418,7 +418,7 @@
     return L.divIcon({
       className: "gcs-icon",
       html: `<div class="gcs-dot gcs-${mode}">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#37a8db" stroke-width="2"
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#e0302c" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 10a7.31 7.31 0 0 0 10 10Z"/><path d="m9 15 3-3"/>
           <path d="M17 13a6 6 0 0 0-6-6"/><path d="M21 13A10 10 0 0 0 11 3"/>
@@ -440,7 +440,7 @@
         gcsAccuracyCircle.setLatLng(ll).setRadius(acc);
       } else {
         gcsAccuracyCircle = L.circle(ll, {
-          radius: acc, color: "#37a8db", weight: 1, fillColor: "#37a8db", fillOpacity: 0.08, interactive: false,
+          radius: acc, color: "#e0302c", weight: 1, fillColor: "#e0302c", fillOpacity: 0.08, interactive: false,
         }).addTo(map);
       }
     } else if (gcsAccuracyCircle) {
@@ -1327,7 +1327,7 @@
       turnLine = L.polyline([], { pane: 'dirLines', color: '#fff', weight: 1.5, opacity: 0.95, lineCap: 'round', interactive: false }).addTo(dirLayer);
       hdgCasing = L.polyline([], { pane: 'dirLines', color: '#000', weight: 6, opacity: 0.3, lineCap: 'round', interactive: false }).addTo(dirLayer);
       cogCasing = L.polyline([], { pane: 'dirLines', color: '#000', weight: 6, opacity: 0.3, lineCap: 'round', interactive: false }).addTo(dirLayer);
-      hdgLine = L.polyline([], { pane: 'dirLines', color: '#37a8db', weight: 3, opacity: 1, lineCap: 'round', interactive: false }).addTo(dirLayer);
+      hdgLine = L.polyline([], { pane: 'dirLines', color: '#e0302c', weight: 3, opacity: 1, lineCap: 'round', interactive: false }).addTo(dirLayer);
       cogLine = L.polyline([], { pane: 'dirLines', color: '#f5a623', weight: 3, opacity: 1, dashArray: '6 5', lineCap: 'round', interactive: false }).addTo(dirLayer);
     }
     const { lat, lon, heading, course, speed } = followCurrent;
@@ -2055,11 +2055,11 @@
 
   /* Geozone vertex popup (dark, matching the mission WP editor popup). */
   :global(.gz-popup-container .leaflet-popup-content-wrapper) {
-    background: rgba(30, 30, 30, 0.92); color: #ddd; border: 1px solid rgba(55, 168, 219, 0.35);
+    background: rgba(30, 30, 30, 0.92); color: #ddd; border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.35));
     border-radius: 8px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
   }
   :global(.gz-popup-container .leaflet-popup-tip) {
-    background: rgba(30, 30, 30, 0.92); border: 1px solid rgba(55, 168, 219, 0.35);
+    background: rgba(30, 30, 30, 0.92); border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.35));
   }
   :global(.gz-popup) { display: flex; flex-direction: column; gap: 5px; min-width: 160px; }
   :global(.gz-popup-row) { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: #cfcfcf; }
@@ -2071,7 +2071,7 @@
   :global(.gz-popup-apply), :global(.gz-popup-del) {
     border: none; border-radius: 4px; padding: 3px 10px; font-size: 12px; cursor: pointer;
   }
-  :global(.gz-popup-apply) { background: #37a8db; color: #04222e; font-weight: 600; }
+  :global(.gz-popup-apply) { background: var(--mx-red, #e0302c); color: #1a0505; font-weight: 600; }
   :global(.gz-popup-del) { background: none; border: 1px solid #d40000; color: #ff5a5a; }
 
   .map {
@@ -2108,9 +2108,9 @@
     width: 38px;
     height: 38px;
     background: rgba(46, 46, 46, 0.9);
-    border: 2px solid rgba(55, 168, 219, 0.5);
+    border: 2px solid var(--mx-red-dim, rgba(224, 48, 44, 0.5));
     border-radius: 6px;
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -2121,8 +2121,8 @@
   }
 
   .map-control-btn:hover {
-    background: rgba(55, 168, 219, 0.25);
-    border-color: #37a8db;
+    background: rgba(224, 48, 44, 0.25);
+    border-color: var(--mx-red, #e0302c);
   }
 
   .map-zoom-btn {
@@ -2139,22 +2139,22 @@
 
   .map-heading-btn.mode-free {
     background: rgba(46, 46, 46, 0.45);
-    border-color: rgba(55, 168, 219, 0.45);
-    color: rgba(199, 223, 232, 0.95);
+    border-color: rgba(224, 48, 44, 0.45);
+    color: rgba(232, 199, 199, 0.95);
     backdrop-filter: blur(4px);
   }
 
   .map-heading-btn.mode-follow,
   .map-heading-btn.mode-heading {
     background: rgba(46, 46, 46, 0.92);
-    border-color: rgba(55, 168, 219, 0.7);
-    color: #37a8db;
+    border-color: var(--mx-red-dim, rgba(224, 48, 44, 0.7));
+    color: var(--mx-red, #e0302c);
     backdrop-filter: blur(8px);
   }
 
   .map-heading-btn.mode-free:hover {
-    background: rgba(55, 168, 219, 0.12);
-    border-color: rgba(55, 168, 219, 0.75);
+    background: rgba(224, 48, 44, 0.12);
+    border-color: rgba(224, 48, 44, 0.75);
   }
 
   .heading-icon {
@@ -2194,7 +2194,7 @@
   :global(.guided-popup-wrap .leaflet-popup-content-wrapper) {
     background: rgba(46, 46, 46, 0.97);
     color: #e0e0e0;
-    border: 1px solid #37a8db;
+    border: 1px solid var(--mx-red, #e0302c);
     border-radius: 6px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
   }
@@ -2295,7 +2295,7 @@
     justify-content: center;
     border-radius: 50%;
     background: rgba(40, 42, 44, 0.62);
-    border: 2px solid rgba(55, 168, 219, 0.85);
+    border: 2px solid rgba(224, 48, 44, 0.85);
     box-shadow: 0 0 6px rgba(0, 0, 0, 0.45);
   }
   /* Manual: signal that it's draggable. */

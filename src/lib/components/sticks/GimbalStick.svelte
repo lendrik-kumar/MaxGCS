@@ -88,7 +88,7 @@
   }
 
   .dot-primary {
-    background: #37a8db;
+    background: var(--mx-red, #e0302c);
     z-index: 2;
   }
 
