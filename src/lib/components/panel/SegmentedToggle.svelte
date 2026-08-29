@@ -95,8 +95,8 @@
     position: absolute;
     top: 2px;
     bottom: 2px;
-    background: rgba(55, 168, 219, 0.22);
-    border: 1px solid #37a8db;
+    background: var(--mx-red-dim, rgba(224, 48, 44, 0.22));
+    border: 1px solid var(--mx-red, #e0302c);
     border-radius: 4px;
     transition: left 0.2s ease, width 0.2s ease;
     pointer-events: none;
@@ -122,7 +122,7 @@
     transition: color 0.15s;
   }
   .seg-btn:hover:not(.active) { color: #e0e0e0; }
-  .seg-btn.active { color: #37a8db; }
+  .seg-btn.active { color: var(--mx-red, #e0302c); }
   /* Read-only: dim the whole control and show a not-allowed cursor; the active segment stays marked. */
   .seg.disabled { opacity: 0.55; }
   .seg.disabled .seg-btn { cursor: not-allowed; }

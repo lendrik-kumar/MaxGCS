@@ -100,7 +100,7 @@
     touch-action: none;
     transition: background-color 0.15s, border-color 0.15s, opacity 0.15s;
   }
-  .htc.standard { --htc-border: #37a8db; --htc-bg: rgba(55, 168, 219, 0.12); --htc-fg: #cfe8f4; --htc-fill: rgba(55, 168, 219, 0.55); }
+  .htc.standard { --htc-border: var(--mx-red, #e0302c); --htc-bg: var(--mx-red-dim, rgba(224, 48, 44, 0.12)); --htc-fg: #f4d4d3; --htc-fill: rgba(224, 48, 44, 0.55); }
   .htc.warning  { --htc-border: #d4a017; --htc-bg: rgba(212, 160, 23, 0.12); --htc-fg: #f0dca6; --htc-fill: rgba(212, 160, 23, 0.55); }
   .htc.danger   { --htc-border: #d40000; --htc-bg: rgba(212, 0, 0, 0.14);   --htc-fg: #f3b5b5; --htc-fill: rgba(212, 0, 0, 0.6); }
 

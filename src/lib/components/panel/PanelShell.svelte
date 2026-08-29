@@ -117,7 +117,7 @@
   .ps {
     position: absolute;
     top: 65px;
-    left: 62px;
+    right: 62px;
     z-index: 150;
     display: flex;
     overflow: hidden;
@@ -174,7 +174,7 @@
   .ps-fullscreen,
   .ps-wide-compact {
     top: 62px;
-    left: 62px;
+    right: 62px;
     z-index: 160;
     flex-direction: column;
     border-radius: 10px;
@@ -235,7 +235,7 @@
     flex: 1;
     font-weight: 600;
     font-size: 13px;
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

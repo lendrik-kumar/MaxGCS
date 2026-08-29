@@ -556,9 +556,9 @@
   }
 
   .widget-panel.drag-hover {
-    outline-color: #37a8db;
+    outline-color: var(--mx-red, #e0302c);
     outline-style: solid;
-    background: rgba(55, 168, 219, 0.05);
+    background: var(--mx-red-dim, rgba(224, 48, 44, 0.05));
   }
 
   .widget-slot {
@@ -598,7 +598,7 @@
   .widget-slot.insert-after::after {
     content: '';
     position: absolute;
-    background: #37a8db;
+    background: var(--mx-red, #e0302c);
     border-radius: 2px;
     z-index: 20;
   }

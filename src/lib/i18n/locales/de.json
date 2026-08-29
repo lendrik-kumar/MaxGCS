@@ -1,6 +1,6 @@
 {
   "app": {
-    "brand": "KiteGC",
+    "brand": "MaxGCS",
     "version": "v{version}"
   },
   "window": {
@@ -391,7 +391,7 @@
   },
   "update": {
     "title": "Update verfügbar",
-    "body": "Eine neue Version von Kite Ground Control ist verfügbar.",
+    "body": "Eine neue Version von MaxGCS ist verfügbar.",
     "latest": "Neueste:",
     "current": "Installiert:",
     "prerelease": "Pre-Release",
@@ -596,8 +596,8 @@
     "alertCpaLookAhead": "CPA-Vorausschau",
     "ffModule": "ESP32-Modul (seriell)",
     "ffNodeName": "Node-Name",
-    "ffNodeNamePlaceholder": "KITE-GCS",
-    "ffHint": "Kite emuliert ein INAV-FC an deiner GCS-Position, damit das Modul sie teilt und Peers weiterreicht.",
+    "ffNodeNamePlaceholder": "MaxGCS",
+    "ffHint": "MaxGCS emuliert ein INAV-FC an deiner GCS-Position, damit das Modul sie teilt und Peers weiterreicht.",
     "linkQuality": "Link-Qualität (0–4)",
     "acType": {
       "light": "Leichtflugzeug",
@@ -815,7 +815,7 @@
     "directionLines": "Richtungsanzeiger",
     "directionLinesHint": "Heading-, Kurs- und Turn-Linien am Flugzeug auf der Karte",
     "mavlinkFullTelemetry": "Volle MAVLink-Telemetrie",
-    "mavlinkFullTelemetryHint": "Nur MAVLink: streamt alles, was der FC mit seinen eigenen konfigurierten Raten sendet (ignoriert die Fluglage-/GPS-Rate-Einstellungen). Für Highspeed-Links und vollständige Aufzeichnung im .tlog. Standard aus — Kite fordert ein reduziertes Rate-Set an, das auf langsame RC-Links passt.",
+    "mavlinkFullTelemetryHint": "Nur MAVLink: streamt alles, was der FC mit seinen eigenen konfigurierten Raten sendet (ignoriert die Fluglage-/GPS-Rate-Einstellungen). Für Highspeed-Links und vollständige Aufzeichnung im .tlog. Standard aus — MaxGCS fordert ein reduziertes Rate-Set an, das auf langsame RC-Links passt.",
     "flightLogging": "Flugbuch",
     "enableFlightLogging": "Flugbuch aktivieren",
     "enableFlightRecording": "Flugaufzeichnung aktivieren",
@@ -999,7 +999,7 @@
     "decoderMissingMsg": "INAV-Blackbox-Logs benötigen das externe Tool 'blackbox_decode', das nicht installiert ist. Automatisch von den offiziellen iNavFlight-Releases herunterladen?",
     "decoderDownload": "Herunterladen",
     "decoderDownloadFailed": "blackbox_decode konnte nicht heruntergeladen werden: {error}",
-    "kflightFileFilter": "KiteGC-Flugdateien",
+    "kflightFileFilter": "MaxGCS-Flugdateien",
     "exportTitle": "Export abgeschlossen",
     "exportSuccess": "{count} Flug/Flüge erfolgreich exportiert.",
     "importKflightTitle": "Import abgeschlossen",
@@ -1067,7 +1067,8 @@
     "right": "Rechts",
     "off": "Aus",
     "editLayout": "Widget-Layout bearbeiten",
-    "exitEdit": "Bearbeitungsmodus beenden"
+    "exitEdit": "Bearbeitungsmodus beenden",
+    "resizeDock": "Zum Anpassen ziehen"
   },
   "widgetLabels": {
     "spd": "SPD",

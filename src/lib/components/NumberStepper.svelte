@@ -144,7 +144,7 @@
   }
 
   .ns-btn:hover {
-    background: #37a8db;
+    background: var(--mx-red, #e0302c);
     color: #fff;
   }
 
@@ -173,7 +173,7 @@
   }
 
   .ns-stepper:focus-within {
-    border-color: #37a8db;
+    border-color: var(--mx-red, #e0302c);
   }
 
   .ns-input {

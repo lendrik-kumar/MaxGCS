@@ -79,8 +79,8 @@
     align-items: center;
     padding: 0 10px;
     height: 24px;
-    background: #2e2e2e;
-    border-top: 1px solid #272727;
+    background: var(--mx-panel, #2e2e2e);
+    border-top: 1px solid var(--mx-border, #272727);
     font-size: 11px;
     color: #949494;
     z-index: 200;

@@ -1,6 +1,6 @@
 {
   "app": {
-    "brand": "KiteGC",
+    "brand": "MaxGCS",
     "version": "v{version}"
   },
   "statusBox": {
@@ -380,7 +380,7 @@
   },
   "update": {
     "title": "Mise à jour disponible",
-    "body": "Une nouvelle version de Kite Ground Control est disponible.",
+    "body": "Une nouvelle version de MaxGCS est disponible.",
     "latest": "Dernière :",
     "current": "Installée :",
     "prerelease": "pré-version",
@@ -585,8 +585,8 @@
     "alertCpaLookAhead": "Anticipation CPA",
     "ffModule": "Module ESP32 (série)",
     "ffNodeName": "Nom du nœud",
-    "ffNodeNamePlaceholder": "KITE-GCS",
-    "ffHint": "Kite émule un FC INAV à la position de la GCS pour que le module la partage et relaie les pairs.",
+    "ffNodeNamePlaceholder": "MaxGCS",
+    "ffHint": "MaxGCS émule un FC INAV à la position de la GCS pour que le module la partage et relaie les pairs.",
     "linkQuality": "Qualité du lien (0–4)",
     "acType": {
       "light": "Avion léger",
@@ -944,7 +944,7 @@
     "decoderMissingMsg": "Les journaux Blackbox INAV nécessitent l'outil externe « blackbox_decode », qui n'est pas installé. Le télécharger automatiquement depuis les releases officielles iNavFlight ?",
     "decoderDownload": "Télécharger",
     "decoderDownloadFailed": "Impossible de télécharger blackbox_decode : {error}",
-    "kflightFileFilter": "Fichiers de vol KiteGC",
+    "kflightFileFilter": "Fichiers de vol MaxGCS",
     "exportTitle": "Export terminé",
     "exportSuccess": "{count} vol(s) exporté(s) avec succès.",
     "importKflightTitle": "Import terminé",
@@ -1012,7 +1012,8 @@
     "right": "Droite",
     "off": "Off",
     "editLayout": "Modifier la disposition des widgets",
-    "exitEdit": "Quitter le mode édition"
+    "exitEdit": "Quitter le mode édition",
+    "resizeDock": "Glisser pour redimensionner"
   },
   "widgetLabels": {
     "spd": "SPD",

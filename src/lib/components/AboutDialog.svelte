@@ -28,7 +28,10 @@
       <button class="about-x" onclick={close} title={$t('about.close')} aria-label={$t('about.close')}>×</button>
 
       <div class="about-head">
-        <img class="about-logo-full" src="/branding/kitegc-logo-full-light.svg" alt={APP_NAME} />
+        <div class="about-logo-row">
+          <img src="/branding/maxgcs-icon-white.svg" alt="MaxGCS Logo" class="about-logo-img" />
+          <div class="about-logo-full">{APP_NAME}</div>
+        </div>
         <div class="about-tagline">{APP_TAGLINE}</div>
       </div>
 
@@ -107,7 +110,9 @@
   .about-x:hover { color: #e0e0e0; background: rgba(255, 255, 255, 0.06); }
 
   .about-head { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 16px; }
-  .about-logo-full { width: 340px; max-width: 100%; height: auto; display: block; }
+  .about-logo-row { display: flex; align-items: center; gap: 10px; }
+  .about-logo-img { width: 32px; height: 32px; object-fit: contain; }
+  .about-logo-full { font-size: 28px; font-weight: 700; letter-spacing: 2px; color: var(--mx-red, #e0302c); display: block; }
   .about-tagline { font-size: 12px; color: #949494; }
 
   .about-rows { display: flex; flex-direction: column; gap: 5px; padding-bottom: 14px; border-bottom: 1px solid #272727; }

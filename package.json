@@ -1,7 +1,7 @@
 {
-  "name": "kite-gc",
+  "name": "maxgcs",
   "version": "1.0.0-rc1",
-  "description": "Kite Ground Control — Universal Ground Control Station",
+  "description": "MaxGCS — Universal Ground Control Station",
   "type": "module",
   "scripts": {
     "dev": "vite dev",

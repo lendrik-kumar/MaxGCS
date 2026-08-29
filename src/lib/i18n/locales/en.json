@@ -1,6 +1,6 @@
 {
   "app": {
-    "brand": "KiteGC",
+    "brand": "MaxGCS",
     "version": "v{version}"
   },
   "window": {
@@ -391,7 +391,7 @@
   },
   "update": {
     "title": "Update available",
-    "body": "A new version of Kite Ground Control is available.",
+    "body": "A new version of MaxGCS is available.",
     "latest": "Latest:",
     "current": "You have:",
     "prerelease": "pre-release",
@@ -596,8 +596,8 @@
     "alertCpaLookAhead": "CPA look-ahead",
     "ffModule": "ESP32 module (serial)",
     "ffNodeName": "Node name",
-    "ffNodeNamePlaceholder": "KITE-GCS",
-    "ffHint": "Kite emulates an INAV FC at your GCS location so the module shares it and relays peers.",
+    "ffNodeNamePlaceholder": "MaxGCS",
+    "ffHint": "MaxGCS emulates an INAV FC at your GCS location so the module shares it and relays peers.",
     "linkQuality": "Link quality (0–4)",
     "acType": {
       "light": "Light aircraft",
@@ -815,7 +815,7 @@
     "directionLines": "Direction indicators",
     "directionLinesHint": "Heading, course-over-ground and predicted-turn lines at the aircraft on the map",
     "mavlinkFullTelemetry": "Full MAVLink Telemetry",
-    "mavlinkFullTelemetryHint": "MAVLink only: stream everything the FC sends at its own configured rates (ignores the Attitude/GPS rate settings). For high-bandwidth links and capturing all data in the .tlog. Default off — Kite requests a reduced rate set that fits slow RC links.",
+    "mavlinkFullTelemetryHint": "MAVLink only: stream everything the FC sends at its own configured rates (ignores the Attitude/GPS rate settings). For high-bandwidth links and capturing all data in the .tlog. Default off — MaxGCS requests a reduced rate set that fits slow RC links.",
     "flightLogging": "Flight Logbook",
     "enableFlightLogging": "Enable Flight Logbook",
     "enableFlightRecording": "Enable Flight Recording",
@@ -999,7 +999,7 @@
     "decoderMissingMsg": "INAV Blackbox logs need the external 'blackbox_decode' tool, which isn't installed. Download it automatically from the official iNavFlight releases?",
     "decoderDownload": "Download",
     "decoderDownloadFailed": "Could not download blackbox_decode: {error}",
-    "kflightFileFilter": "KiteGC Flight Files",
+    "kflightFileFilter": "MaxGCS Flight Files",
     "exportTitle": "Export Complete",
     "exportSuccess": "{count} flight(s) exported successfully.",
     "importKflightTitle": "Import Complete",
@@ -1067,7 +1067,8 @@
     "right": "Right",
     "off": "Off",
     "editLayout": "Edit widget layout",
-    "exitEdit": "Exit edit mode"
+    "exitEdit": "Exit edit mode",
+    "resizeDock": "Drag to resize"
   },
   "widgetLabels": {
     "spd": "SPD",

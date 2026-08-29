@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/kitegc-banner-dark.png">
-    <img alt="Kite Ground Control" src=".github/kitegc-banner-light.png" width="560">
+    <source media="(prefers-color-scheme: dark)" srcset="static/branding/maxgcs-logo-full.svg">
+    <img alt="MaxGCS" src="static/branding/maxgcs-logo-full-light.svg" width="480">
   </picture>
 </p>
 
@@ -18,11 +18,11 @@
 ---
 ## Development State: 
 
-Kite is currently in **feature-freeze** state for the 1.0 release. 
+MaxGCS is currently in **feature-freeze** state for the 1.0 release. 
 Only PRs for **bugfixes will be accepted** and merged (towards `master` branch) But new **features or functional changes will not be merged** until after the final 1.0 release is out. 
 
 --- 
-**Kite Ground Control (Kite GC)** is a modern, cross-platform ground control station for **INAV**,
+**MaxGCS** is a modern, cross-platform ground control station for **INAV**,
 **ArduPilot** and **PX4** aircraft — planes, multirotors, VTOL, helicopters, rovers and boats. It
 combines everything you expect from a GCS with a fast, intuitive interface and a few things you won't
 find anywhere else — like a full 3D flight view, a fleet & battery manager, and live video right next
@@ -32,7 +32,7 @@ Built with [Tauri 2.0](https://tauri.app/) (Rust backend) and [Svelte 5](https:/
 (TypeScript frontend).
 
 <p align="center">
-  <img alt="Kite Ground Control in 3D mode" src="docs/user/assets/main_interface_3d.png" width="820">
+  <img alt="MaxGCS in 3D mode" src="docs/user/assets/main_interface_3d.png" width="820">
 </p>
 
 <p align="center">
@@ -66,7 +66,7 @@ Everything you'd expect from a ground station:
 - **Comfort** — a multi-language interface (English, German, French at launch) with persistent window,
   layout and settings between sessions.
 
-## What makes Kite special
+## What makes MaxGCS special
 
 - **Full 3D mode** — Cesium 3D globe with real terrain, a unified 3D mission overlay, an FPV cockpit
   camera with a conformal HUD, and live day/night lighting.
@@ -123,7 +123,7 @@ Full documentation is online at **[b14ckyy.github.io/Kite-GC](https://b14ckyy.gi
 
 ## Support development
 
-Kite GC is free, open-source software built in my spare time. If it's useful to you and you'd like to
+MaxGCS is free, open-source software built in my spare time. If it's useful to you and you'd like to
 support its development, a donation is hugely appreciated — thank you! 💛
 
 <p align="center">
@@ -154,7 +154,7 @@ just build-linux     # Linux release (on Linux)
 > **Tip:** install `just` for the best developer experience (see the `justfile` in the project root).
 > More detail — setup, troubleshooting and CI — is in the
 > [Building from source](https://b14ckyy.github.io/Kite-GC/for-developers/building/) guide, and the
-> [Architecture overview](https://b14ckyy.github.io/Kite-GC/for-developers/architecture/) explains how Kite fits together.
+> [Architecture overview](https://b14ckyy.github.io/Kite-GC/for-developers/architecture/) explains how MaxGCS fits together.
 
 ## Contributing
 

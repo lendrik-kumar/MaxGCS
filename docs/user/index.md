@@ -1,17 +1,17 @@
 <p align="center" markdown>
-  ![Kite Ground Control](assets/branding/kitegc-logo-full.svg#only-light){ width="480" }
-  ![Kite Ground Control](assets/branding/kitegc-logo-full-light.svg#only-dark){ width="480" }
+  ![MaxGCS](assets/branding/maxgcs-logo-full.svg#only-light){ width="480" }
+  ![MaxGCS](assets/branding/maxgcs-logo-full-light.svg#only-dark){ width="480" }
 </p>
 
-**Kite Ground Control (Kite GC)** is a modern, cross-platform ground control station for
+**MaxGCS** is a modern, cross-platform ground control station for
 **INAV**, **ArduPilot**, and **PX4** aircraft — planes, multirotors, VTOL, helicopters, rovers and
 boats. It combines everything you expect from a GCS with a fast, intuitive interface and a few things
 you won't find anywhere else — like a full 3D flight view, a fleet & battery manager, and live video
 right next to the map.
 
-![Kite Ground Control in 3D mode](assets/main_interface_3d.png)
+![MaxGCS in 3D mode](assets/main_interface_3d.png)
 /// caption
-Kite Ground Control flying in 3D mode.
+MaxGCS flying in 3D mode.
 ///
 
 ## Highlights

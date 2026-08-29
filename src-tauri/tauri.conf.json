@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Kite Ground Control",
+  "productName": "MaxGCS",
   "version": "../package.json",
   "identifier": "com.kitegc.app",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Kite Ground Control",
+        "title": "MaxGCS",
         "width": 1280,
         "height": 800,
         "dragDropEnabled": true,

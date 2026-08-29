@@ -117,41 +117,41 @@
 
   /* ── Standard (neutral, the usual action) ───────────────── */
   .kbtn-standard {
-    background: #434343;
-    border-color: #555;
+    background: var(--mx-panel-2, #434343);
+    border-color: var(--mx-border-strong, #555);
     color: #ccc;
   }
   .kbtn-standard:hover:not(:disabled) {
-    background: rgba(55, 168, 219, 0.18);
-    border-color: rgba(55, 168, 219, 0.5);
-    color: #e0e0e0;
+    background: var(--mx-red-dim, rgba(224, 48, 44, 0.18));
+    border-color: var(--mx-red, rgba(224, 48, 44, 0.5));
+    color: var(--mx-text, #e0e0e0);
   }
 
   /* ── Mode switch (toggles a view; `active` = current) ───── */
   .kbtn-mode {
     background: transparent;
-    border-color: rgba(55, 168, 219, 0.4);
-    color: #9fd4ee;
+    border-color: var(--mx-red-dim, rgba(224, 48, 44, 0.4));
+    color: var(--mx-red-bright, #ee9f9f);
   }
   .kbtn-mode:hover:not(:disabled) {
-    background: rgba(55, 168, 219, 0.12);
+    background: var(--mx-red-dim, rgba(224, 48, 44, 0.12));
     color: #fff;
   }
   .kbtn-mode.active {
-    background: rgba(55, 168, 219, 0.22);
-    border-color: #37a8db;
-    color: #37a8db;
+    background: rgba(224, 48, 44, 0.22);
+    border-color: var(--mx-red, #e0302c);
+    color: var(--mx-red, #e0302c);
   }
 
   /* ── Data transfer (FC up/download, EEPROM, import/export) ─ */
   .kbtn-data {
-    background: #1a3a5c;
-    border-color: #37a8db;
-    color: #37a8db;
+    background: #3a1a1a;
+    border-color: var(--mx-red, #e0302c);
+    color: var(--mx-red, #e0302c);
   }
   .kbtn-data:hover:not(:disabled) {
-    background: #224b73;
-    color: #5bbce9;
+    background: #4d2422;
+    color: var(--mx-red-bright, #ff4d47);
   }
 
   /* ── Danger (destructive) ───────────────────────────────── */
@@ -184,16 +184,16 @@
     padding: 0 8px;
     font-size: 11px;
     font-weight: 600;
-    background: rgba(55, 168, 219, 0.12);
-    border-color: rgba(55, 168, 219, 0.35);
-    color: #9fd4ee;
+    background: var(--mx-red-dim, rgba(224, 48, 44, 0.12));
+    border-color: rgba(224, 48, 44, 0.35);
+    color: var(--mx-red-bright, #ee9f9f);
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .kbtn-compact:hover:not(:disabled) {
-    background: rgba(55, 168, 219, 0.25);
-    border-color: #37a8db;
+    background: rgba(224, 48, 44, 0.25);
+    border-color: var(--mx-red, #e0302c);
     color: #fff;
   }
 
