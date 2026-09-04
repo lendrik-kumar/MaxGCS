@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/kitegc-banner-dark.png">
-    <img alt="Kite Ground Control" src=".github/kitegc-banner-light.png" width="560">
+    <img alt="Max Ground Control" src=".github/kitegc-banner-light.png" width="560">
   </picture>
 </p>
 
