@@ -39,6 +39,10 @@ build:
 build-windows:
     @powershell -ExecutionPolicy Bypass -File scripts/build-windows.ps1
 
+# Zero-touch deploy on a fresh Windows machine: installs prerequisites, builds, auto-starts at logon
+deploy-windows:
+    @scripts\deploy-windows.bat
+
 # Explicit Linux release build (only works on Linux)
 build-linux:
     @bash scripts/build-linux.sh
