@@ -133,7 +133,15 @@
     currentConn.status === 'connected' && currentConn.protocolType === 'mavlink'
   );
 
-  onDestroy(() => { unsubMission(); unsubSelIdx(); unsubSel(); unsubEditMode(); unsubConn(); unsubVehicle(); unsubSystem(); });
+  onDestroy(() => {
+    unsubMission(); unsubSelIdx(); unsubSel(); unsubEditMode(); unsubConn(); unsubVehicle(); unsubSystem();
+    // Navigating away (e.g. another nav tab) while the pattern generator is open destroys this
+    // component without ever running the "leaving edit mode" effect above — `activeSurveyPattern.isActive`
+    // is module-level shared state, so without this it stays stuck `true` and silently blocks every
+    // future map click (ArduMissionLayer's onMapClick no-ops while a pattern is "active") until the app
+    // restarts, even though `showPatternPanel` itself resets fine on remount.
+    if (showPatternPanel) void import('$lib/stores/surveyPattern.svelte').then(m => m.exitPatternMode());
+  });
 
   async function handleSaveFile() {
     try {

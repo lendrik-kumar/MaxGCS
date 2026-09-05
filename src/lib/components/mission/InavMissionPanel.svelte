@@ -87,7 +87,14 @@
   const unsubCanUndo = canUndo.subscribe(v => { canUndoNow = v; });
   const unsubCanRedo = canRedo.subscribe(v => { canRedoNow = v; });
 
-  onDestroy(() => { unsubMission(); unsubSelIdx(); unsubSel(); unsubEditMode(); unsubTelem(); unsubMissionIdx(); unsubMissionCount(); unsubCanUndo(); unsubCanRedo(); });
+  onDestroy(() => {
+    unsubMission(); unsubSelIdx(); unsubSel(); unsubEditMode(); unsubTelem(); unsubMissionIdx(); unsubMissionCount(); unsubCanUndo(); unsubCanRedo();
+    // Same gap as the ArduPilot panel (see ArduMissionPanel.svelte onDestroy): navigating away while
+    // the pattern generator is open destroys this component before the edit-mode-off cleanup above
+    // ever runs, leaving the module-level `activeSurveyPattern.isActive` stuck `true` and silently
+    // blocking every future map click.
+    if (showPatternPanel) void import('$lib/stores/surveyPattern.svelte').then(m => m.exitPatternMode());
+  });
 
   // Keyboard: Ctrl+Z = undo, Ctrl+Y / Ctrl+Shift+Z = redo. Edit-mode only and
   // not while a text field is focused (so native input undo keeps working).

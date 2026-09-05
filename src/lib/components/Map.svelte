@@ -1685,6 +1685,30 @@
       attributionControl: true,
     });
 
+    // Heading-up view (see applyFollowFrame) rotates the map container with a CSS `transform:
+    // rotate()` — Leaflet has no native rotation support and always resolves a click's pixel
+    // position from `container.getBoundingClientRect()` as if the container were unrotated.
+    // That bounding rect is the rotated element's axis-aligned screen box, so with any nonzero
+    // rotation every click (waypoint placement, "fly here", context menu, …) resolves to the
+    // wrong lat/lng — the pin doesn't land where the user actually tapped. Undo the rotation
+    // here, once, at Leaflet's single pixel-resolution choke point, so every consumer (mission
+    // layers included) gets a correct containerPoint without knowing about the rotation at all.
+    const defaultMouseEventToContainerPoint = map.mouseEventToContainerPoint.bind(map);
+    map.mouseEventToContainerPoint = (e: MouseEvent) => {
+      if (!mapHeading || viewMode !== 'heading-follow') return defaultMouseEventToContainerPoint(e);
+      const container = map!.getContainer();
+      const rect = container.getBoundingClientRect();
+      const dx = e.clientX - (rect.left + rect.width / 2);
+      const dy = e.clientY - (rect.top + rect.height / 2);
+      // The DOM is rotated by -mapHeading degrees (--map-rotation); rotate the click back by the
+      // same angle to recover its position in Leaflet's unrotated pixel space.
+      const theta = (-mapHeading * Math.PI) / 180;
+      const cosT = Math.cos(theta), sinT = Math.sin(theta);
+      const ux = dx * cosT + dy * sinT;
+      const uy = -dx * sinT + dy * cosT;
+      return L.point(container.clientWidth / 2 + ux, container.clientHeight / 2 + uy);
+    };
+
     // Initialize tile cache with persisted size limit
     initTileCache(s.mapCacheMaxMB);
 

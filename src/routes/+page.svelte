@@ -93,7 +93,7 @@
   import TerrainAnalysisPanel from "$lib/components/terrain/TerrainAnalysisPanel.svelte";
   import { editMode, replayActive, mission, missionFlags, missionDownload, missionUpload, missionFcInfo, markMissionSynced, loadedMissionId, missionSetWaypoints, launchPoint, hasLocation, toDeg, type Waypoint } from "$lib/stores/mission";
   import { pendingSystemSwitch, autopilotSystem, setAutopilotSystem, confirmSystemSwitch } from "$lib/stores/autopilotContext";
-  import { arduMission, arduSelectedWpIndex, arduLoadedMissionId, type ArduWaypoint } from "$lib/stores/missionArdupilot";
+  import { arduMission, arduSelectedWpIndex, arduLoadedMissionId, arduEditMode, type ArduWaypoint } from "$lib/stores/missionArdupilot";
   import { terrainAnalysis, patchTerrainAnalysis } from "$lib/stores/terrainAnalysis";
   import { DEFAULT_RADAR, DEFAULT_AIRSPACE, BUILTIN_ADSB_PROVIDERS } from "$lib/stores/settings";
   import type { AppSettings, InterfaceSettings, PanelConfig, RadarSettings, GcsMode, AirspaceSettings, SystemMessagesLevel, LogLevel } from "$lib/stores/settings";
@@ -188,7 +188,11 @@
   $effect(() => { if (mapViewMode === '3d') map3dEverOpened = true; });
   // Waypoints can only be edited on the 2D map → entering edit mode forces 2D (untracked read/write so
   // toggling the view later doesn't re-trigger this; it reacts to the edit-mode transition only).
-  $effect(() => { if ($editMode) untrack(() => { if (mapViewMode === '3d') mapViewMode = '2d'; }); });
+  // Both mission edit-mode stores are checked — INAV's `editMode` and ArduPilot/PX4's `arduEditMode` —
+  // since the 3D map (Map3D.svelte) only draws a read-only mission overlay for either firmware; without
+  // this, entering ArduPilot edit mode while on the 3D map left clicks hitting the Cesium globe with no
+  // click-to-add-waypoint handler at all, so nothing appeared on the map or in the mission list.
+  $effect(() => { if ($editMode || $arduEditMode) untrack(() => { if (mapViewMode === '3d') mapViewMode = '2d'; }); });
   // Map3D instance handle — used to read the 3D camera focus on a 3D→2D switch so
   // the 2D map can re-centre on the same spot (keeping its own zoom).
   let map3dRef: {
