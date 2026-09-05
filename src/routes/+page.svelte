@@ -4,7 +4,7 @@
 -->
 
 <script lang="ts">
-  import { onDestroy, onMount, untrack } from "svelte";
+  import { onDestroy, onMount, untrack, flushSync } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { open, save } from "@tauri-apps/plugin-dialog";
@@ -1096,6 +1096,7 @@
       editMode.set(false);
       patchTerrainAnalysis({ open: false });
       settings.patch({ navPanelOpen: false });
+      flushSync();
       setTimeout(() => window.dispatchEvent(new Event("resize")), 320);
       return;
     }
@@ -1110,6 +1111,7 @@
       patchTerrainAnalysis({ open: true });
       navPanelOpen = true;
       settings.patch({ navPanelOpen: true });
+      flushSync();
       return;
     }
     // Selecting another tab switches away from the terrain overlay
@@ -1124,8 +1126,15 @@
     if (!navPanelOpen) {
       navPanelOpen = true;
       settings.patch({ navPanelOpen: true });
-      setTimeout(() => window.dispatchEvent(new Event("resize")), 320);
     }
+    // Force the panel switch to commit to the DOM immediately, rather than waiting for Svelte's
+    // normal scheduler — belt-and-braces against any environment where that flush gets delayed.
+    flushSync();
+    // Switching between two already-open panels (navPanelOpen was already true, e.g. the default
+    // on a fresh launch) doesn't naturally trigger any layout recalculation the way opening the
+    // panel from closed does — nudge it the same way, matching the existing pattern used elsewhere
+    // in this function for exactly this class of "the WebView needs a kick" issue.
+    setTimeout(() => window.dispatchEvent(new Event("resize")), 320);
   }
 
   async function chooseFlightLogPath() {
