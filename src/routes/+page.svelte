@@ -11,6 +11,7 @@
   import { connection, availablePorts, bleDevices } from "$lib/stores/connection";
   import type { FcInfo, PortInfo, BleDeviceInfo, TransportType, ProtocolType } from "$lib/stores/connection";
   import { settings } from "$lib/stores/settings";
+  import { auth } from "$lib/stores/auth";
   import { isDebugMode } from "$lib/stores/debug";
   import { telemetry } from "$lib/stores/telemetry";
   import { startRadarListeners, configureRadar, setRadarCenter, setRadarNode } from "$lib/stores/radarTracking";
@@ -24,6 +25,7 @@
   import CesiumKeyPrompt from "$lib/components/CesiumKeyPrompt.svelte";
   import LogPlayer from "$lib/components/logbook/LogPlayer.svelte";
   import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
+  import SettingsAuthGate from "$lib/components/SettingsAuthGate.svelte";
   import UpdateDialog from "$lib/components/UpdateDialog.svelte";
   import { runUpdateCheck } from "$lib/controllers/updateCheck";
   import ContextMenu from "$lib/components/ContextMenu.svelte";
@@ -614,6 +616,7 @@
 
   // Shared in-app dialog (replaces all native confirm/alert calls)
   let confirmDialog: ReturnType<typeof ConfirmDialog>;
+  let authGate: ReturnType<typeof SettingsAuthGate>;
   let endFlightDialog: ReturnType<typeof EndFlightDialog>;
   let recoveryPrompt: ReturnType<typeof RecoveryPrompt>;
   let disconnectArmedDialog: ReturnType<typeof DisconnectArmedDialog>;
@@ -772,6 +775,9 @@
   navPanelOpen = saved.navPanelOpen;
   // Drop any legacy "-v2" suffix from a persisted tab (the migration scaffolding is gone now).
   activeTab = (saved.activeTab ?? 'uav-info').replace(/-v2$/, '');
+  // Settings is password-gated (see stores/auth.ts) and the unlock state never persists across
+  // restarts — if the app was last left open on Settings, don't silently reopen it unauthenticated.
+  if (untrack(() => activeTab) === 'settings') navPanelOpen = false;
   attitudeRateHz = saved.attitudeRateHz;
   positionRateHz = saved.positionRateHz;
   airspeedEnabled = saved.airspeedEnabled;
@@ -1079,7 +1085,7 @@
     }
   }
 
-  function selectTab(tabId: string) {
+  async function selectTab(tabId: string) {
     // The nav rail has no hamburger/toggle step any more — every button is always visible.
     // Re-clicking the already-open active tab now closes its panel (matching a standard
     // always-on icon-rail pattern); clicking any other tab opens/switches to it.
@@ -1092,6 +1098,12 @@
       settings.patch({ navPanelOpen: false });
       setTimeout(() => window.dispatchEvent(new Event("resize")), 320);
       return;
+    }
+    // Settings is password-gated — every other tab (mission planning, flying, etc.) stays open.
+    // Unlock state is session-only (stores/auth.ts), so this re-prompts on every app restart.
+    if (tabId === 'settings' && !$auth.unlocked) {
+      const ok = await authGate?.show($settings.security.passwordHash ? 'unlock' : 'setup');
+      if (!ok) return;
     }
     // Terrain Analysis is a full-width overlay shown in place of the panel content.
     if (tabId === 'terrain') {
@@ -2585,6 +2597,7 @@
   <div class="ui-scale">
 
 <ConfirmDialog bind:this={confirmDialog} />
+<SettingsAuthGate bind:this={authGate} />
 <UpdateDialog />
 <CesiumKeyPrompt bind:open={cesiumKeyPromptOpen} onSave={cesiumKeySave} onRemindLater={cesiumKeyRemindLater} onIgnore={cesiumKeyIgnore} />
 <EndFlightDialog bind:this={endFlightDialog} {interfaceSettings} />

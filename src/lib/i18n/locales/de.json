@@ -763,6 +763,16 @@
     "notConnected": "Nicht verbunden"
   },
   "settings": {
+    "securityTitle": "Sicherheit",
+    "securityHint": "Schützt dieses Einstellungen-Panel mit einem Passwort. Andere Panels (Mission, Steuerung, RC usw.) sind davon nie betroffen.",
+    "changePassword": "Passwort ändern",
+    "currentPasswordPlaceholder": "Aktuelles Passwort",
+    "newPasswordPlaceholder": "Neues Passwort",
+    "confirmNewPasswordPlaceholder": "Neues Passwort bestätigen",
+    "changePasswordButton": "Passwort aktualisieren",
+    "lockNowButton": "Einstellungen jetzt sperren",
+    "currentPasswordWrong": "Aktuelles Passwort ist falsch.",
+    "passwordChanged": "Passwort aktualisiert.",
     "map": "Karte",
     "tileProvider": "Karten-Anbieter",
     "tileCache": "Karten-Cache",
@@ -1015,6 +1025,19 @@
   },
   "dialog": {
     "cancel": "Abbrechen"
+  },
+  "security": {
+    "setupTitle": "Passwort festlegen",
+    "setupMessage": "Lege ein Passwort fest, um das Einstellungen-Panel zu schützen. Alles andere — Missionsplanung, Fliegen, RC-Steuerung, Video — bleibt für alle offen; nur die Einstellungen werden gesperrt.",
+    "unlockTitle": "Einstellungen gesperrt",
+    "unlockMessage": "Gib das Passwort ein, um die Einstellungen zu öffnen.",
+    "passwordPlaceholder": "Passwort",
+    "confirmPlaceholder": "Passwort bestätigen",
+    "setButton": "Passwort festlegen",
+    "unlockButton": "Entsperren",
+    "mismatchError": "Passwörter stimmen nicht überein.",
+    "emptyError": "Passwort eingeben.",
+    "wrongPasswordError": "Falsches Passwort."
   },
   "player": {
     "close": "Player schließen",

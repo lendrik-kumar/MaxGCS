@@ -725,6 +725,16 @@
     "notConnected": "Non connecté"
   },
   "settings": {
+    "securityTitle": "Sécurité",
+    "securityHint": "Protège ce panneau Paramètres par un mot de passe. Les autres panneaux (Mission, Contrôle, RC, etc.) ne sont jamais concernés.",
+    "changePassword": "Changer le mot de passe",
+    "currentPasswordPlaceholder": "Mot de passe actuel",
+    "newPasswordPlaceholder": "Nouveau mot de passe",
+    "confirmNewPasswordPlaceholder": "Confirmer le nouveau mot de passe",
+    "changePasswordButton": "Mettre à jour le mot de passe",
+    "lockNowButton": "Verrouiller les paramètres maintenant",
+    "currentPasswordWrong": "Le mot de passe actuel est incorrect.",
+    "passwordChanged": "Mot de passe mis à jour.",
     "map": "Carte",
     "tileProvider": "Fournisseur de tuiles",
     "tileCache": "Cache de tuiles",
@@ -960,6 +970,19 @@
   },
   "dialog": {
     "cancel": "Annuler"
+  },
+  "security": {
+    "setupTitle": "Définir un mot de passe",
+    "setupMessage": "Définissez un mot de passe pour protéger le panneau Paramètres. Tout le reste — planification de mission, vol, contrôle RC, vidéo — reste accessible à tous ; seuls les Paramètres seront verrouillés.",
+    "unlockTitle": "Paramètres verrouillés",
+    "unlockMessage": "Entrez le mot de passe pour ouvrir les Paramètres.",
+    "passwordPlaceholder": "Mot de passe",
+    "confirmPlaceholder": "Confirmer le mot de passe",
+    "setButton": "Définir le mot de passe",
+    "unlockButton": "Déverrouiller",
+    "mismatchError": "Les mots de passe ne correspondent pas.",
+    "emptyError": "Entrez un mot de passe.",
+    "wrongPasswordError": "Mot de passe incorrect."
   },
   "player": {
     "close": "Fermer le lecteur",

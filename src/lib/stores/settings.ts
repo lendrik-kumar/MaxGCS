@@ -19,6 +19,13 @@ export interface PanelConfig {
   positions?: Record<string, 'bottom' | 'right'>;
 }
 
+/** Settings-panel password gate. `null` = no password set yet (gate prompts to set one on first
+ *  open). Salted SHA-256 via helpers/passwordHash.ts — a soft lock, not a security boundary. */
+export interface SecuritySettings {
+  passwordHash: string | null;
+  passwordSalt: string | null;
+}
+
 export type SpeedUnit = 'kmh' | 'mph' | 'ms' | 'fts' | 'kt';
 export type AltitudeUnit = 'm' | 'ft';
 export type DistanceUnit = 'metric' | 'imperial';
@@ -363,6 +370,8 @@ export interface AppSettings {
   gcsMode: GcsMode;
   /** Last known physical user location (for Night-Mode auto sunset timing); persisted across sessions. */
   userLocation: { lat: number; lon: number } | null;
+  /** Settings-panel password gate. */
+  security: SecuritySettings;
   /** Radar (foreign-vehicle tracking) subsystem settings. */
   radar: RadarSettings;
   /** Airspace Manager (aeronautical data) global settings. */
@@ -440,6 +449,7 @@ const defaults: AppSettings = {
   nightMode2D: 'auto',
   gcsMode: 'continuous',
   userLocation: null,
+  security: { passwordHash: null, passwordSalt: null },
   radar: DEFAULT_RADAR,
   airspace: DEFAULT_AIRSPACE,
   relays: [],
@@ -458,6 +468,10 @@ function load(): AppSettings {
         interface: {
           ...defaults.interface,
           ...(parsed.interface ?? {}),
+        },
+        security: {
+          ...defaults.security,
+          ...(parsed.security ?? {}),
         },
         radar: (() => {
           const dr = defaults.radar;

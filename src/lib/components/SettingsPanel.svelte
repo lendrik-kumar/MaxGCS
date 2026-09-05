@@ -13,7 +13,9 @@
   import { SUPPORTED_LOCALES } from '$lib/i18n';
   import { MAP_PROVIDERS } from '$lib/config/mapProviders';
   import { WIDGET_DEFS } from '$lib/config/widgetRegistry';
-  import { DEFAULT_RADAR, DEFAULT_AIRSPACE, DEFAULT_RC_CONTROL, DEFAULT_UPDATE_CHECK } from '$lib/stores/settings';
+  import { DEFAULT_RADAR, DEFAULT_AIRSPACE, DEFAULT_RC_CONTROL, DEFAULT_UPDATE_CHECK, settings } from '$lib/stores/settings';
+  import { auth } from '$lib/stores/auth';
+  import { generateSalt, hashPassword } from '$lib/helpers/passwordHash';
   import { panelState } from '$lib/stores/panelState';
   import { resetGcsManual, gcsManuallySet } from '$lib/stores/gcsLocation';
   import type { AppSettings, InterfaceSettings, RadarSettings, GcsMode, AirspaceSettings, AirspaceProvider, SystemMessagesLevel, LogLevel, RcControlSettings, UpdateCheckSettings, UpdateCheckMode } from '$lib/stores/settings';
@@ -29,6 +31,43 @@
   import AboutDialog from '$lib/components/AboutDialog.svelte';
 
   let aboutOpen = $state(false);
+
+  // ── Security (Settings password gate) — reads/writes stores directly rather than threading
+  // through the onPatch prop chain, since it's self-contained and unrelated to the rest of the
+  // settings this panel otherwise mirrors from +page.svelte. See stores/auth.ts, stores/settings.ts. -->
+  let currentPasswordInput = $state('');
+  let newPasswordInput = $state('');
+  let confirmNewPasswordInput = $state('');
+  let securityError = $state('');
+  let securityMessage = $state('');
+
+  async function changePassword() {
+    securityError = '';
+    securityMessage = '';
+    const { passwordHash, passwordSalt } = $settings.security;
+    if (passwordHash && passwordSalt) {
+      const attempt = await hashPassword(currentPasswordInput, passwordSalt);
+      if (attempt !== passwordHash) {
+        securityError = $t('settings.currentPasswordWrong');
+        return;
+      }
+    }
+    if (!newPasswordInput || newPasswordInput !== confirmNewPasswordInput) {
+      securityError = $t('security.mismatchError');
+      return;
+    }
+    const salt = generateSalt();
+    const hash = await hashPassword(newPasswordInput, salt);
+    settings.patch({ security: { passwordHash: hash, passwordSalt: salt } });
+    currentPasswordInput = '';
+    newPasswordInput = '';
+    confirmNewPasswordInput = '';
+    securityMessage = $t('settings.passwordChanged');
+  }
+
+  function lockSettingsNow() {
+    auth.lock();
+  }
 
   let {
     localeValue = 'en',
@@ -718,6 +757,27 @@
         </select>
       </div>
     </div>
+
+    <!-- ── Security ──────────────────────────────────── -->
+    <div class="s-group">
+      <h4 class="s-head">{$t('settings.securityTitle')}</h4>
+      <p class="s-hint">{$t('settings.securityHint')}</p>
+      <div class="s-row s-row-stack">
+        <input type="password" class="s-input" bind:value={currentPasswordInput}
+          placeholder={$settings.security.passwordHash ? $t('settings.currentPasswordPlaceholder') : ''}
+          disabled={!$settings.security.passwordHash} />
+        <input type="password" class="s-input" bind:value={newPasswordInput} placeholder={$t('settings.newPasswordPlaceholder')} />
+        <input type="password" class="s-input" bind:value={confirmNewPasswordInput} placeholder={$t('settings.confirmNewPasswordPlaceholder')} />
+        <Button variant="standard" size="sm" onclick={changePassword}>{$t('settings.changePasswordButton')}</Button>
+      </div>
+      {#if securityError}<div class="s-err">{securityError}</div>{/if}
+      {#if securityMessage}<p class="s-hint">{securityMessage}</p>{/if}
+      {#if $auth.unlocked}
+        <div class="s-row">
+          <Button variant="warning" size="sm" onclick={lockSettingsNow}>{$t('settings.lockNowButton')}</Button>
+        </div>
+      {/if}
+    </div>
   {/if}
 {/snippet}
 
@@ -804,6 +864,14 @@
 
   .path-picker-row { display: flex; gap: 6px; align-items: center; }
   .path-input { flex: 1; min-width: 0; }
+
+  /* Security section hint/status line — same treatment as the Cesium hint below. */
+  .s-hint {
+    font-size: 11px;
+    color: #9a9a9a;
+    line-height: 1.45;
+    margin: 4px 0 0 0;
+  }
 
   /* The one kept hint (Cesium token) — bumped up a touch so it's actually readable. */
   .cesium-hint {

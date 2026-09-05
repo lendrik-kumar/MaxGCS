@@ -763,6 +763,16 @@
     "notConnected": "Not connected"
   },
   "settings": {
+    "securityTitle": "Security",
+    "securityHint": "Protects this Settings panel with a password. Other panels (Mission, Control, RC, etc.) are never affected.",
+    "changePassword": "Change Password",
+    "currentPasswordPlaceholder": "Current password",
+    "newPasswordPlaceholder": "New password",
+    "confirmNewPasswordPlaceholder": "Confirm new password",
+    "changePasswordButton": "Update Password",
+    "lockNowButton": "Lock Settings Now",
+    "currentPasswordWrong": "Current password is incorrect.",
+    "passwordChanged": "Password updated.",
     "map": "Map",
     "tileProvider": "Tile Provider",
     "tileCache": "Tile Cache",
@@ -1015,6 +1025,19 @@
   },
   "dialog": {
     "cancel": "Cancel"
+  },
+  "security": {
+    "setupTitle": "Set a Password",
+    "setupMessage": "Set a password to protect the Settings panel. Everything else — mission planning, flying, RC control, video — stays open to everyone; only Settings will be locked.",
+    "unlockTitle": "Settings Locked",
+    "unlockMessage": "Enter the password to open Settings.",
+    "passwordPlaceholder": "Password",
+    "confirmPlaceholder": "Confirm password",
+    "setButton": "Set Password",
+    "unlockButton": "Unlock",
+    "mismatchError": "Passwords don't match.",
+    "emptyError": "Enter a password.",
+    "wrongPasswordError": "Incorrect password."
   },
   "player": {
     "close": "Close player",
