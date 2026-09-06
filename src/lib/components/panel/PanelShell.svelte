@@ -117,7 +117,7 @@
   .ps {
     position: absolute;
     top: 65px;
-    right: 62px;
+    left: 62px;
     z-index: 150;
     display: flex;
     overflow: hidden;
@@ -174,7 +174,7 @@
   .ps-fullscreen,
   .ps-wide-compact {
     top: 62px;
-    right: 62px;
+    left: 62px;
     z-index: 160;
     flex-direction: column;
     border-radius: 10px;
