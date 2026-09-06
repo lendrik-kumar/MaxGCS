@@ -110,8 +110,12 @@ impl Transport for MspTransport {
                     return Err("Transport disconnected".to_string());
                 }
                 Err(e) => {
-                    self.connection_lost = true; // IO error on a removed device
-                    return Err(format!("MSP read error: {}", e));
+                    // A non-timeout, non-explicit-disconnect I/O error (e.g. a transient Windows
+                    // COM-port hiccup) — log and keep retrying within the deadline above, same as
+                    // the MAVLink read loop treats this same error class (mavlink_proto/handler.rs).
+                    // This used to be fatal here, which meant a single transient error during the
+                    // handshake aborted the connection outright instead of just retrying.
+                    log::warn!("MSP read error during handshake (retrying): {}", e);
                 }
             }
         }
@@ -148,8 +152,15 @@ impl Transport for MspTransport {
                 return Err("Transport disconnected".to_string());
             }
             Err(e) => {
-                self.connection_lost = true;
-                return Err(format!("MSP read error: {}", e));
+                // Same non-fatal treatment as the handshake path above, and the same as the MAVLink
+                // read loop (mavlink_proto/handler.rs) for this identical error class: log and carry
+                // on rather than tearing the connection down. This scheduler loop polls far more
+                // frequently (SCHED_READ_TIMEOUT, ~8ms) than MAVLink's read loop, so a transient,
+                // non-fatal I/O error (not one of the OS's explicit disconnect kinds) was being hit
+                // often enough to kill an otherwise-healthy MSP link within minutes, while MAVLink —
+                // reading far less often and already tolerant of this same error class — did not
+                // show the same symptom.
+                log::warn!("MSP read error (non-fatal): {}", e);
             }
         }
         Ok(out)
