@@ -440,7 +440,7 @@
       {#await import('./SurveyPatternPanel.svelte')}
         <div class="wp-empty">{$t('survey.loading')}</div>
       {:then { default: SurveyPatternPanel }}
-        <SurveyPatternPanel ongenerate={() => { showPatternPanel = false; }} />
+        <SurveyPatternPanel ongenerate={() => { showPatternPanel = false; import('$lib/stores/surveyPattern.svelte').then(m => m.exitPatternMode()); }} />
       {:catch error}
         <div class="wp-empty">⚠ {String(error)}</div>
       {/await}

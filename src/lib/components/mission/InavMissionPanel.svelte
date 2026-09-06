@@ -506,11 +506,11 @@
       {#await import('./SurveyPatternPanel.svelte')}
         <div class="pattern-loading">{$t('survey.loading')}</div>
       {:then { default: SurveyPatternPanel }}
-        <SurveyPatternPanel ongenerate={() => { showPatternPanel = false; }} />
+        <SurveyPatternPanel ongenerate={() => { showPatternPanel = false; import('$lib/stores/surveyPattern.svelte').then(m => m.exitPatternMode()); }} />
       {:catch error}
         <div class="pattern-error">
           {_t('survey.error', { error: String(error?.message || error) })}
-          <button onclick={() => showPatternPanel = false}>Schließen</button>
+          <button onclick={() => { showPatternPanel = false; import('$lib/stores/surveyPattern.svelte').then(m => m.exitPatternMode()); }}>Schließen</button>
         </div>
       {/await}
     {:else if currentMission.waypoints.length === 0}
