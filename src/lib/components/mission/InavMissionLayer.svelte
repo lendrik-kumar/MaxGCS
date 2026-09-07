@@ -858,6 +858,9 @@
   }
 
   function onMapClick(e: L.LeafletMouseEvent) {
+    // TEMPORARY DIAGNOSTIC v2 (remove once root-caused) — same log_frontend bridge as before.
+    const trace = (msg: string) => { void invoke('log_frontend', { level: 'warn', area: 'inav-wp-debug', message: msg }).catch((err) => { void invoke('log_frontend', { level: 'warn', area: 'inav-wp-debug', message: `LOG INVOKE ITSELF FAILED: ${String(err)}` }); }); };
+    trace(`click e=${!!e} editing=${currentEditing} pattern=${activeSurveyPattern.isActive} sel=${currentSelSet.size} wp=${getTotalWpCount()}`);
     if (!currentEditing) {
       // Outside edit mode a tap on empty map deselects the current waypoint.
       if (currentSelIdx >= 0 || currentSelSet.size > 0) clearWpSelection();
@@ -870,9 +873,12 @@
     const lat = fromDeg(e.latlng.lat);
     const lon = fromDeg(e.latlng.lng);
     const altitude = altFromM(get(settings).defaultWpAltitudeM);
+    trace(`invoking mission_add_wp lat=${lat} lon=${lon} alt=${altitude}`);
     // Not awaited (the click handler must stay synchronous) — but a rejection must not vanish
     // as a silent unhandled promise, which would look indistinguishable from "the click did nothing".
-    void missionAddWp(WpAction.Waypoint, lat, lon, altitude).catch((err) => console.error('mission_add_wp failed', err));
+    void missionAddWp(WpAction.Waypoint, lat, lon, altitude)
+      .then((m) => trace(`mission_add_wp OK, waypoints.length=${m.waypoints.length}`))
+      .catch((err) => { trace(`mission_add_wp REJECTED: ${String(err)}`); console.error('mission_add_wp failed', err); });
   }
 
   // FBH legs/ring use screen-space (pixel) geometry, so the latlng endpoints must be

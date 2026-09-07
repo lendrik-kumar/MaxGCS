@@ -110,6 +110,11 @@
   import type { UavModelOverride } from "$lib/helpers/uavIcons";
   import { modeCategory } from "$lib/helpers/flightModeRegistry";
 
+  // TEMPORARY DIAGNOSTIC (remove once the INAV click-to-add-waypoint issue is root-caused) —
+  // unconditional, fires on every app load regardless of any user interaction. Proves whether the
+  // log_frontend bridge (used by the inav-wp-debug traces) works at all in this build.
+  void invoke('log_frontend', { level: 'warn', area: 'inav-wp-debug', message: 'app script loaded (unconditional boot check)' }).catch((err) => { console.error('[inav-wp-debug] log_frontend invoke itself failed', err); });
+
   // ── Layout zone CSS custom properties (driven by layout store) ──
   const gridBottomHeight = $derived(
     $layout.bottomDock.sizeOverride ?? GRID_DEFAULTS.bottomDockHeight
