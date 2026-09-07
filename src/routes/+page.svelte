@@ -1097,7 +1097,9 @@
     const isReclickingOpenTerrain = navPanelOpen && terrainOpen && tabId === 'terrain';
     if (isReclickingOpenTab || isReclickingOpenTerrain) {
       navPanelOpen = false;
-      editMode.set(false);
+      // Closing the panel must NOT drop mission edit mode — closing it (to get an unobstructed
+      // map) while still placing waypoints is the whole point; see selectTab's other editMode.set(false)
+      // below, which correctly clears it only when switching to a genuinely different tab.
       patchTerrainAnalysis({ open: false });
       settings.patch({ navPanelOpen: false });
       flushSync();

@@ -858,33 +858,21 @@
   }
 
   function onMapClick(e: L.LeafletMouseEvent) {
-    // TEMPORARY DIAGNOSTIC (remove once the INAV click-to-add-waypoint issue is root-caused) — mirrors
-    // logVideo() in stores/video.ts: routes into the same backend log file the Diagnostics page hands
-    // out, so this is visible without DevTools.
-    const trace = (msg: string) => {
-      console.warn(`[inav-wp-debug] ${msg}`);
-      void invoke('log_frontend', { level: 'warn', area: 'inav-wp-debug', message: msg }).catch(() => {});
-    };
-    trace(`onMapClick fired: currentEditing=${currentEditing} patternActive=${activeSurveyPattern.isActive} selSize=${currentSelSet.size} wpCount=${getTotalWpCount()}`);
     if (!currentEditing) {
       // Outside edit mode a tap on empty map deselects the current waypoint.
       if (currentSelIdx >= 0 || currentSelSet.size > 0) clearWpSelection();
-      trace('blocked: not in edit mode');
       return;
     }
     // Block waypoint placement while pattern mode is active
-    if (activeSurveyPattern.isActive) { trace('blocked: pattern mode active'); return; }
-    if (currentSelSet.size > 0) { clearWpSelection(); trace('blocked: cleared a stale selection, click swallowed'); return; }
-    if (getTotalWpCount() >= MAX_WAYPOINTS) { trace('blocked: at MAX_WAYPOINTS cap'); return; }
+    if (activeSurveyPattern.isActive) return;
+    if (currentSelSet.size > 0) { clearWpSelection(); return; }
+    if (getTotalWpCount() >= MAX_WAYPOINTS) return;
     const lat = fromDeg(e.latlng.lat);
     const lon = fromDeg(e.latlng.lng);
     const altitude = altFromM(get(settings).defaultWpAltitudeM);
-    trace(`calling missionAddWp lat=${lat} lon=${lon} alt=${altitude}`);
     // Not awaited (the click handler must stay synchronous) — but a rejection must not vanish
     // as a silent unhandled promise, which would look indistinguishable from "the click did nothing".
-    void missionAddWp(WpAction.Waypoint, lat, lon, altitude)
-      .then(() => trace('missionAddWp resolved OK'))
-      .catch((err) => { trace(`missionAddWp REJECTED: ${String(err)}`); console.error('mission_add_wp failed', err); });
+    void missionAddWp(WpAction.Waypoint, lat, lon, altitude).catch((err) => console.error('mission_add_wp failed', err));
   }
 
   // FBH legs/ring use screen-space (pixel) geometry, so the latlng endpoints must be
@@ -899,9 +887,6 @@
   map.on('click', onMapClick);
   // svelte-ignore state_referenced_locally
   map.on('zoomend', onMapZoomRerender);
-  // TEMPORARY DIAGNOSTIC (remove alongside the onMapClick trace above) — confirms this component
-  // actually mounted and reached the click-listener registration.
-  void invoke('log_frontend', { level: 'warn', area: 'inav-wp-debug', message: 'InavMissionLayer mounted, click listener registered' }).catch(() => {});
 
   $effect(() => { void currentLaunch; void currentSelSet; void currentShowMission; void currentReplayActive; void currentActiveWp; void activeSurveyPattern.isActive; renderMission(currentMission, currentSelIdx, currentEditing); });
 
