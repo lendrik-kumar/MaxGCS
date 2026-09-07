@@ -899,6 +899,9 @@
   map.on('click', onMapClick);
   // svelte-ignore state_referenced_locally
   map.on('zoomend', onMapZoomRerender);
+  // TEMPORARY DIAGNOSTIC (remove alongside the onMapClick trace above) — confirms this component
+  // actually mounted and reached the click-listener registration.
+  void invoke('log_frontend', { level: 'warn', area: 'inav-wp-debug', message: 'InavMissionLayer mounted, click listener registered' }).catch(() => {});
 
   $effect(() => { void currentLaunch; void currentSelSet; void currentShowMission; void currentReplayActive; void currentActiveWp; void activeSurveyPattern.isActive; renderMission(currentMission, currentSelIdx, currentEditing); });
 
