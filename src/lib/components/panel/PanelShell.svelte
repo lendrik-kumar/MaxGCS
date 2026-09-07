@@ -117,7 +117,7 @@
   .ps {
     position: absolute;
     top: 65px;
-    left: 62px;
+    right: 62px;
     z-index: 150;
     display: flex;
     overflow: hidden;
@@ -168,13 +168,14 @@
   }
 
   /* Fullscreen + Wide-Compact: floating overlays (terrain-analyzer style), NOT edge-to-edge.
-     All variants are left-anchored and sized by width/height (no `right`) so any variant can
-     animate into any other. Fullscreen = even ~62px inset all round; Wide-Compact = a short
-     top strip that stops before the side widget dock so the map stays visible for comparison. */
+     All variants are right-anchored (next to the nav rail) and sized by width/height so any
+     variant can animate into any other. Fullscreen = even ~62px inset all round; Wide-Compact
+     = a short top strip that stops before the side widget dock so the map stays visible for
+     comparison. */
   .ps-fullscreen,
   .ps-wide-compact {
     top: 62px;
-    left: 62px;
+    right: 62px;
     z-index: 160;
     flex-direction: column;
     border-radius: 10px;
