@@ -684,7 +684,8 @@
     "disableHwAccelHint": "Erzwingt die Software-Transkodierung. Nur nötig, wenn das Bild mit Hardwarebeschleunigung fehlerhaft oder instabil ist.",
     "record": "Aufnehmen (verbessert)",
     "recordHint": "Nur native Capture. Speichert eine entrauschte, geschärfte, farbkorrigierte Kopie auf der Festplatte — die Live-Ansicht bleibt unverändert. Start/Stopp startet den Feed kurz neu.",
-    "recordingTo": "Aufnahme nach {path}"
+    "recordingTo": "Aufnahme nach {path}",
+    "genericDeviceLabel": "Aufnahmegerät {n}"
   },
   "recordings": {
     "title": "Aufnahmen",

@@ -662,7 +662,8 @@
     "disableHwAccelHint": "Force le transcodage logiciel. Utile uniquement si l'image est défectueuse ou instable avec l'accélération matérielle.",
     "record": "Enregistrer (amélioré)",
     "recordHint": "Capture native uniquement. Enregistre sur le disque une copie débruitée, renforcée et corrigée en couleur — l'affichage en direct n'est pas affecté. Le démarrage/l'arrêt redémarre brièvement le flux.",
-    "recordingTo": "Enregistrement vers {path}"
+    "recordingTo": "Enregistrement vers {path}",
+    "genericDeviceLabel": "Périphérique de capture {n}"
   },
   "recordings": {
     "title": "Enregistrements",

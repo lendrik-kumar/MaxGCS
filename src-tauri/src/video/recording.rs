@@ -21,15 +21,18 @@ pub struct RecordingInfo {
     pub modified_ms: i64,
 }
 
-/// Where recordings are saved: `Documents/KiteGC/Recordings` — mirrors
+/// Where recordings are saved: `Documents/MaxGCS/Recordings` — mirrors
 /// `flightlog::db::resolve_raw_log_dir`'s reasoning: user-facing output belongs in Documents (easy to
 /// find, survives an AppData wipe), not the AppData folder the DB/logs use. Not user-configurable yet
 /// (the master toggle lives in Settings; a custom path can follow the same pattern later if wanted).
+///
+/// Named "MaxGCS" rather than "KiteGC" (unlike the flightlog DB/logs, which still use the pre-rename
+/// name app-wide) since this is a brand-new folder with no existing user data to migrate.
 pub fn recordings_dir() -> PathBuf {
     let base = dirs::document_dir()
         .or_else(dirs::home_dir)
         .unwrap_or_else(|| PathBuf::from("."));
-    base.join("KiteGC").join("Recordings")
+    base.join("MaxGCS").join("Recordings")
 }
 
 /// A fresh, timestamped output path inside `recordings_dir()`. Creates the directory if missing.

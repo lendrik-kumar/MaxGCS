@@ -486,8 +486,12 @@
           value={$videoState.nativeDevice ?? ''}
           onchange={(e) => setNativeDevice((e.currentTarget as HTMLSelectElement).value || null)}
         >
-          {#each $videoState.nativeDevices as d}
-            <option value={d.id}>{d.name}</option>
+          {#each $videoState.nativeDevices as d, i}
+            <!-- Shown label is a generic index, not the real hardware name (`d.name`) — cosmetic
+                 only, so the actual capture-card model isn't visible on screen/in recordings.
+                 Selection still uses the real `d.id`, and internal device re-matching after a
+                 replug still keys off the real `d.name` in the store (see resolveNativeDevice). -->
+            <option value={d.id}>{$t('video.genericDeviceLabel', { values: { n: i + 1 } })}</option>
           {/each}
         </select>
       </label>

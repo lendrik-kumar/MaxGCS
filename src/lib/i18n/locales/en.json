@@ -684,7 +684,8 @@
     "disableHwAccelHint": "Forces the software video transcode. Only needed if the picture is broken or unstable with hardware acceleration.",
     "record": "Record (enhanced)",
     "recordHint": "Native capture only. Saves a denoised, sharpened, colour-corrected copy to disk — the live view is unaffected. Starting/stopping briefly restarts the feed.",
-    "recordingTo": "Recording to {path}"
+    "recordingTo": "Recording to {path}",
+    "genericDeviceLabel": "Capture Device {n}"
   },
   "recordings": {
     "title": "Recordings",
