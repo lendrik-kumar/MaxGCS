@@ -685,7 +685,7 @@
     "record": "Aufnehmen (verbessert)",
     "recordHint": "Nur native Capture. Speichert eine entrauschte, geschärfte, farbkorrigierte Kopie auf der Festplatte — die Live-Ansicht bleibt unverändert. Start/Stopp startet den Feed kurz neu.",
     "recordingTo": "Aufnahme nach {path}",
-    "genericDeviceLabel": "Aufnahmegerät {n}"
+    "genericDeviceLabel": "Sichere Verbindung {n}"
   },
   "recordings": {
     "title": "Aufnahmen",

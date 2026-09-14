@@ -663,7 +663,7 @@
     "record": "Enregistrer (amélioré)",
     "recordHint": "Capture native uniquement. Enregistre sur le disque une copie débruitée, renforcée et corrigée en couleur — l'affichage en direct n'est pas affecté. Le démarrage/l'arrêt redémarre brièvement le flux.",
     "recordingTo": "Enregistrement vers {path}",
-    "genericDeviceLabel": "Périphérique de capture {n}"
+    "genericDeviceLabel": "Comm sécurisée {n}"
   },
   "recordings": {
     "title": "Enregistrements",
