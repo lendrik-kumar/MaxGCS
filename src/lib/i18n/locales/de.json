@@ -156,6 +156,7 @@
     "video": "Video",
     "control": "Steuerung",
     "rc": "RC",
+    "recordings": "Aufnahmen",
     "closePanel": "Panel schließen",
     "openPanel": "Panel öffnen"
   },
@@ -680,7 +681,19 @@
     "mjpegLoadFailed": "Videostream konnte nicht angezeigt werden — die Quelle wurde beendet oder dieses System kann ihn nicht darstellen.",
     "ffmpegNativeMissing": "ffmpeg wird für Native Capture benötigt – spricht die Gerätehardware direkt an (V4L2 / DirectShow / AVFoundation).",
     "disableHwAccel": "Hardwarebeschleunigung deaktivieren",
-    "disableHwAccelHint": "Erzwingt die Software-Transkodierung. Nur nötig, wenn das Bild mit Hardwarebeschleunigung fehlerhaft oder instabil ist."
+    "disableHwAccelHint": "Erzwingt die Software-Transkodierung. Nur nötig, wenn das Bild mit Hardwarebeschleunigung fehlerhaft oder instabil ist.",
+    "record": "Aufnehmen (verbessert)",
+    "recordHint": "Nur native Capture. Speichert eine entrauschte, geschärfte, farbkorrigierte Kopie auf der Festplatte — die Live-Ansicht bleibt unverändert. Start/Stopp startet den Feed kurz neu.",
+    "recordingTo": "Aufnahme nach {path}"
+  },
+  "recordings": {
+    "title": "Aufnahmen",
+    "empty": "Noch keine Aufnahmen. Aktiviere „Aufnehmen (verbessert)“ im Video-Panel — nur native Capture —, um eine zu speichern.",
+    "refresh": "Aktualisieren",
+    "name": "Name",
+    "size": "Größe",
+    "date": "Datum",
+    "folderHint": "Gespeichert unter {path}"
   },
   "terrain": {
     "title": "Geländeanalyse",

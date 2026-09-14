@@ -45,6 +45,7 @@
   import MavCommandPanel from "$lib/components/control/MavCommandPanel.svelte";
   import RcControlPanel from "$lib/components/control/RcControlPanel.svelte";
   import VideoPanel from "$lib/components/video/VideoPanel.svelte";
+  import RecordingsPanel from "$lib/components/video/RecordingsPanel.svelte";
   import RadarPanel from "$lib/components/RadarPanel.svelte";
   import AirspaceManagerPanel from "$lib/components/AirspaceManagerPanel.svelte";
   import { geozoneWorking } from "$lib/stores/geozone";
@@ -680,6 +681,9 @@
   // RC control (INAV RC over MSP) — two stacked sticks + a signal arc; opt-in via settings.
   const ICON_RC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3" width="17" height="18" rx="2.5"/><circle cx="8" cy="9" r="2.1"/><circle cx="16" cy="9" r="2.1"/><path d="M6.5 15.5h11"/><path d="M6.5 18h6"/></svg>';
 
+  // Record dot in a ring (Recordings) — deliberately distinct from the camera-body Video icon.
+  const ICON_RECORDINGS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.2" fill="currentColor" stroke="none"/></svg>';
+
   // The vehicle-control panel is MAVLink-only (ArduPilot/PX4) and only meaningful while connected.
   const isMavlinkConnected = $derived(
     $connection.status === 'connected' && $connection.protocolType === 'mavlink'
@@ -708,6 +712,7 @@
     { id: "radar", label: () => $t('nav.radar'), icon: ICON_RADAR },
     { id: "airspace", label: () => $t('nav.airspace'), icon: ICON_AIRSPACE },
     { id: "video", label: () => $t('nav.video'), icon: ICON_VIDEO },
+    { id: "recordings", label: () => $t('nav.recordings'), icon: ICON_RECORDINGS },
     { id: "settings", label: () => $t('nav.settings'), icon: ICON_SETTINGS },
   ];
   // Airspace tab shows when its master switch is on, OR when a geozone-capable INAV FC is connected (so
@@ -2848,6 +2853,8 @@
       {/key}
     {:else if activeTab === 'video'}
       <VideoPanel />
+    {:else if activeTab === 'recordings'}
+      <RecordingsPanel />
     {:else if DEV_MODE && activeTab === 'dev-playground'}
       <PanelPlayground initial="compact" label="DEV Playground" />
     {/if}

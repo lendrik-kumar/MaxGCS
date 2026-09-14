@@ -145,6 +145,7 @@
     "video": "Vidéo",
     "control": "Pilotage",
     "rc": "RC",
+    "recordings": "Enregistrements",
     "closePanel": "Fermer le panneau",
     "openPanel": "Ouvrir le panneau"
   },
@@ -658,7 +659,19 @@
       "copy": "Copie"
     },
     "disableHwAccel": "Désactiver l'accélération matérielle",
-    "disableHwAccelHint": "Force le transcodage logiciel. Utile uniquement si l'image est défectueuse ou instable avec l'accélération matérielle."
+    "disableHwAccelHint": "Force le transcodage logiciel. Utile uniquement si l'image est défectueuse ou instable avec l'accélération matérielle.",
+    "record": "Enregistrer (amélioré)",
+    "recordHint": "Capture native uniquement. Enregistre sur le disque une copie débruitée, renforcée et corrigée en couleur — l'affichage en direct n'est pas affecté. Le démarrage/l'arrêt redémarre brièvement le flux.",
+    "recordingTo": "Enregistrement vers {path}"
+  },
+  "recordings": {
+    "title": "Enregistrements",
+    "empty": "Aucun enregistrement pour l'instant. Activez « Enregistrer (amélioré) » dans le panneau Vidéo — capture native uniquement — pour en créer un.",
+    "refresh": "Actualiser",
+    "name": "Nom",
+    "size": "Taille",
+    "date": "Date",
+    "folderHint": "Enregistré dans {path}"
   },
   "terrain": {
     "title": "Analyse du terrain",

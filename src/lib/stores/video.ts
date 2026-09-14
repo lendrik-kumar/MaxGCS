@@ -106,6 +106,11 @@ export interface VideoState {
    *  hardware works. An escape hatch for driver/hardware combinations we can't anticipate — hardware
    *  stays the default, this is the opt-out. */
   disableHwAccel: boolean;
+  /** Native-capture only: write an enhanced (denoised/sharpened/colour-corrected) copy of the feed to
+   *  disk alongside the live view. Runtime-only — never persisted, never auto-resumes on launch. */
+  recording: boolean;
+  /** Path the enhanced recording is currently being written to; null when not recording. */
+  recordingPath: string | null;
   /** Mirror horizontally (front-facing cams) — applied by the display sinks. */
   mirror: boolean;
   /** Source aspect ratio (w/h); drives the widget / floating-window sizing. */
@@ -287,6 +292,8 @@ const INITIAL: VideoState = {
   mjpegUrl: null,
   activeTranscode: null,
   disableHwAccel: boot.disableHwAccel,
+  recording: false,
+  recordingPath: null,
   mirror: boot.mirror,
   aspect: 16 / 9,
   width: null,
@@ -413,13 +420,15 @@ export function isWebrtcAvailable(): boolean {
 async function startNativeMjpeg(
   sel: NativeSelection,
   id: string,
-): Promise<{ url: string; transcode: string }> {
-  return await invoke<{ url: string; transcode: string }>('video_native_mjpeg_start', {
+  record: boolean,
+): Promise<{ url: string; transcode: string; recordingPath: string | null }> {
+  return await invoke<{ url: string; transcode: string; recordingPath: string | null }>('video_native_mjpeg_start', {
     id,
     codec: sel.codec,
     width: sel.width,
     height: sel.height,
     fps: sel.fps,
+    record,
   });
 }
 
@@ -1148,7 +1157,7 @@ export async function startNative(): Promise<void> {
   savePrefs();
   const sel = st.nativeSel;
   try {
-    const { url, transcode } = await startNativeMjpeg(sel, id);
+    const { url, transcode, recordingPath } = await startNativeMjpeg(sel, id, st.recording);
     // Same straddled-Stop hazard as the RTSP path: the backend holds this call until the capture
     // produces its first bytes, so a Stop in between runs its `stopNativeMjpeg` before this server
     // even exists. Undo it rather than announcing a feed nobody asked for any more.
@@ -1165,6 +1174,7 @@ export async function startNative(): Promise<void> {
       width: sel.width,
       height: sel.height,
       aspect: sel.width / sel.height,
+      recordingPath,
     });
   } catch (e) {
     patch({ status: 'error', error: e instanceof Error ? e.message : String(e), mjpegUrl: null });
@@ -1188,8 +1198,20 @@ export function stopVideo(): void {
     void invoke('video_webrtc_stop').catch(() => {});
     void stopNativeMjpeg();
   }
-  patch({ enabled: false, status: 'off', error: null, rtspEngine: null, mjpegUrl: null, activeTranscode: null, reconnecting: false, reconnectAttempt: 0 });
+  patch({
+    enabled: false,
+    status: 'off',
+    error: null,
+    rtspEngine: null,
+    mjpegUrl: null,
+    activeTranscode: null,
+    reconnecting: false,
+    reconnectAttempt: 0,
+    recording: false,
+    recordingPath: null,
+  });
   savePrefs();
+  if (wasBackend) void refreshRecordings(); // a just-finished recording should show up immediately
 }
 
 export function toggleVideo(): void {
@@ -1311,6 +1333,49 @@ export async function setNativeFramerate(fps: number): Promise<void> {
   patch({ nativeSel: { ...st.nativeSel, fps } });
   savePrefs();
   if (st.enabled && st.kind === 'native') await startNative();
+}
+
+/** Toggle the enhanced recording (native-capture only). Not a per-frame decision, so — like every
+ *  other capture-spec change here (resolution/codec/fps) — turning it on/off restarts the capture;
+ *  see `MjpegServer::start`'s doc comment for why that has to be a full stop+start rather than
+ *  something toggled on the running ffmpeg process. A no-op while no native feed is live: the flag is
+ *  simply remembered and takes effect on the next start. */
+export async function setNativeRecording(recording: boolean): Promise<void> {
+  const st = get(videoState);
+  if (st.recording === recording) return;
+  patch({ recording });
+  if (st.enabled && st.kind === 'native') await startNative();
+}
+
+// ── Enhanced recordings list ──────────────────────────────────────────────────────────────────────
+// What `setNativeRecording(true)` writes to disk — see `video::recording` (backend). A plain list
+// fetched on demand (Recordings tab open, or a recording just ended), not a live subscription: the
+// folder only changes on our own writes.
+export interface RecordingInfo {
+  name: string;
+  path: string;
+  sizeBytes: number;
+  modifiedMs: number;
+}
+export const recordingsList = writable<RecordingInfo[]>([]);
+export const recordingsLoading = writable(false);
+/** `Documents/KiteGC/Recordings` (platform-appropriate) — shown as a hint in the panel; fetched once. */
+export const recordingsDir = writable<string>('');
+
+export async function refreshRecordings(): Promise<void> {
+  recordingsLoading.set(true);
+  try {
+    const [list, dir] = await Promise.all([
+      invoke<RecordingInfo[]>('video_list_recordings'),
+      invoke<string>('video_recordings_dir'),
+    ]);
+    recordingsList.set(list);
+    recordingsDir.set(dir);
+  } catch (e) {
+    logVideo('warn', `failed to list recordings: ${e instanceof Error ? e.message : String(e)}`);
+  } finally {
+    recordingsLoading.set(false);
+  }
 }
 
 /** Change the getUserMedia framerate wish (camera path); restarts the stream if currently live. */

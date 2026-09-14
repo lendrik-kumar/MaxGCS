@@ -46,6 +46,7 @@
     setNativeResolution,
     setNativeFramerate,
     setNativeCodec,
+    setNativeRecording,
   } from '$lib/stores/video';
   import { canvasSink, mjpegSink, mjpegStats } from '$lib/controllers/mjpegSink';
   import {
@@ -532,6 +533,19 @@
             {/each}
           </select>
         </label>
+
+        <div class="field-row">
+          <Toggle
+            checked={$videoState.recording}
+            onchange={(c) => void setNativeRecording(c)}
+            id="vp-record"
+          />
+          <span class="label">{$t('video.record')}</span>
+        </div>
+        <p class="hint">{$t('video.recordHint')}</p>
+        {#if $videoState.recording && $videoState.recordingPath}
+          <p class="hint">{$t('video.recordingTo', { values: { path: $videoState.recordingPath } })}</p>
+        {/if}
       {/if}
 
       <!-- Native capture needs ffmpeg (no go2rtc). -->
