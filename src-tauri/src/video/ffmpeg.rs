@@ -308,12 +308,40 @@ fn manual_install_msg() -> String {
 pub async fn download<F: FnMut(u8, &str)>(mut report: F) -> Result<PathBuf, String> {
     let (want_substr, want_ext) = asset_match().ok_or_else(manual_install_msg)?;
 
-    // Self-contained static GPL build for this platform (ffmpeg-master-latest-win64-gpl.zip /
-    // -linux64-gpl.tar.xz / -linuxarm64-gpl.tar.xz), NOT the -shared variant (needs separate libs).
-    // BtbN's names are fixed across releases, so this resolves through the CDN path instead of the
-    // rate-limited REST API (which 403s for everyone behind a shared IP — see `crate::github_release`).
-    let asset_name = format!("ffmpeg-master-latest-{want_substr}-gpl{want_ext}");
-    let url = crate::github_release::latest_asset_url(REPO, &asset_name);
+    // Self-contained static GPL build for this platform, NOT the -shared variant (needs separate
+    // libs). This used to resolve through a fixed name (`ffmpeg-master-latest-win64-gpl.zip`) via the
+    // CDN-redirect path — cheaper than the rate-limited REST API (see `crate::github_release`) — but
+    // BtbN dropped that alias: current assets carry a build/version tag instead (e.g.
+    // `ffmpeg-N-126549-ga51bb69b09-win64-gpl.zip`, or a pinned `ffmpeg-n9.0.1-...-win64-gpl-9.0.zip`),
+    // so the name can no longer be constructed up front. Resolved the same way `blackbox_decode`'s
+    // versioned assets are: one request for the latest tag, one for its asset list, then pick by
+    // pattern — still no REST API, just two CDN-backed page fetches instead of one redirect.
+    report(5, "Querying latest release");
+    let tag = crate::github_release::latest_tag(HTTP_USER_AGENT, REPO).await?;
+    let assets = crate::github_release::release_assets(HTTP_USER_AGENT, REPO, &tag).await?;
+
+    // "gpl" also matches "lgpl" as a substring, hence the explicit exclusion. Several static-GPL
+    // builds ship per release (an unpinned `master` nightly plus pinned release-branch builds); any
+    // works for our purposes, so take the first after sorting — ASCII puts the capital-N `master`
+    // build (`ffmpeg-N-...`) before the lowercase-n pinned ones (`ffmpeg-n9.0.1-...`), matching the
+    // "latest master" this replaces.
+    let mut candidates: Vec<&String> = assets
+        .iter()
+        .filter(|n| {
+            n.contains(want_substr)
+                && n.ends_with(want_ext)
+                && n.contains("gpl")
+                && !n.contains("lgpl")
+                && !n.contains("shared")
+        })
+        .collect();
+    candidates.sort();
+    let asset_name = candidates
+        .into_iter()
+        .next()
+        .ok_or_else(|| format!("No ffmpeg {want_substr} asset found in release {tag}"))?
+        .clone();
+    let url = crate::github_release::asset_url(REPO, &tag, &asset_name);
 
     let client = reqwest::Client::builder()
         .user_agent(HTTP_USER_AGENT)
