@@ -307,6 +307,11 @@ pub fn video_probe_device(id: String) -> Vec<native::CaptureMode> {
 ///
 /// Only returns `Ok` once the capture actually produced its first bytes — a device that rejects the
 /// requested mode used to leave the UI showing "live" over a black frame (see `MjpegServer::start`).
+///
+/// `record`: also write an enhanced (denoised/sharpened/colour-corrected — see
+/// `mjpeg_server::RECORD_ENHANCE_FILTERS`) H.264/Matroska copy to `video::recording::recordings_dir()`.
+/// The live picture is unaffected either way. The response's `recordingPath` is set only when this
+/// was requested — the frontend uses it to show what's being written to.
 #[tauri::command(async)]
 pub fn video_native_mjpeg_start(
     app: AppHandle,
@@ -315,6 +320,7 @@ pub fn video_native_mjpeg_start(
     width: u32,
     height: u32,
     fps: u32,
+    record: bool,
     mjpeg: State<'_, crate::video::MjpegServer>,
 ) -> Result<serde_json::Value, String> {
     let spec = native::CaptureSpec { id, codec, width, height, fps };
@@ -322,8 +328,26 @@ pub fn video_native_mjpeg_start(
     // to accelerate) and the raw-input case measured only ~21 % better on VAAPI because the upload
     // eats most of the gain, so it stays in software.
     let transcode = if native::needs_transcode(&spec.codec) { "software" } else { "copy" };
-    let port = mjpeg.start(ended_hook(&app), &MjpegSource::Device(&spec))?;
-    Ok(serde_json::json!({ "url": format!("http://127.0.0.1:{port}/"), "transcode": transcode }))
+    let record_path = record.then(crate::video::recording::new_recording_path).transpose()?;
+    let port = mjpeg.start(ended_hook(&app), &MjpegSource::Device(&spec), record_path.clone())?;
+    Ok(serde_json::json!({
+        "url": format!("http://127.0.0.1:{port}/"),
+        "transcode": transcode,
+        "recordingPath": record_path.map(|p| p.to_string_lossy().into_owned()),
+    }))
+}
+
+/// List saved enhanced recordings (native-capture, `record: true`), newest first.
+#[tauri::command(async)]
+pub fn video_list_recordings() -> Result<Vec<crate::video::recording::RecordingInfo>, String> {
+    crate::video::recording::list()
+}
+
+/// Where recordings are saved (`Documents/KiteGC/Recordings`) — shown as a hint in the Recordings
+/// panel. Does not create the folder (unlike `new_recording_path`); it may not exist yet.
+#[tauri::command(async)]
+pub fn video_recordings_dir() -> String {
+    crate::video::recording::recordings_dir().to_string_lossy().into_owned()
 }
 
 /// Start the embedded MJPEG server on an RTSP source — the image path, **without go2rtc**.
@@ -355,7 +379,7 @@ pub fn video_rtsp_mjpeg_start(
     // the only way to know — the mpjpeg muxer rejects anything that isn't MJPEG, so the attempt costs
     // a failed spawn rather than a probe.
     let copy = MjpegSource::Rtsp { url: &url, transcode: RtspTranscode::Copy };
-    match mjpeg.start(ended_hook(&app), &copy) {
+    match mjpeg.start(ended_hook(&app), &copy, None) {
         Ok(port) => {
             log::info!("[video] RTSP source already carries MJPEG — stream-copied, no transcode");
             return Ok(reply(port, RtspTranscode::Copy));
@@ -376,7 +400,7 @@ pub fn video_rtsp_mjpeg_start(
     } else {
         RtspTranscode::Software
     };
-    let port = mjpeg.start(ended_hook(&app), &MjpegSource::Rtsp { url: &url, transcode })?;
+    let port = mjpeg.start(ended_hook(&app), &MjpegSource::Rtsp { url: &url, transcode }, None)?;
     log::info!("[video] RTSP MJPEG transcode running ({})", transcode.label());
     Ok(reply(port, transcode))
 }

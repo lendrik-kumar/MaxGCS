@@ -275,7 +275,7 @@
     background: rgba(46, 46, 46, 0.92);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(55, 168, 219, 0.35);
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.35));
     border-radius: 8px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
     padding: 8px 14px 6px;
@@ -310,9 +310,9 @@
   }
 
   .log-player-source-btn.active {
-    background: #37a8db;
+    background: var(--mx-red, #e0302c);
     color: #fff;
-    border-color: #339cc1;
+    border-color: #a82520;
   }
 
   .log-player-source-btn:disabled {
@@ -350,7 +350,7 @@
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
     font-size: 13px;
     font-weight: 600;
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
     flex-shrink: 0;
     letter-spacing: 0.02em;
     font-variant-numeric: tabular-nums;
@@ -407,27 +407,27 @@
   }
 
   .log-player-btn:hover {
-    background: rgba(55, 168, 219, 0.15);
-    border-color: #37a8db;
+    background: rgba(224, 48, 44, 0.15);
+    border-color: var(--mx-red, #e0302c);
   }
 
   .log-player-btn.play-btn {
     font-size: 14px;
     padding: 4px 10px;
-    background: #37a8db;
+    background: var(--mx-red, #e0302c);
     color: #fff;
-    border-color: #339cc1;
+    border-color: #a82520;
   }
 
   .log-player-btn.play-btn:hover {
-    background: #45bce5;
+    background: var(--mx-red-bright, #ff4d47);
   }
 
   .log-player-btn.speed-btn {
     font-weight: 700;
     min-width: 32px;
     text-align: center;
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
   }
 
   .log-player-scrubber {
@@ -451,7 +451,7 @@
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: #37a8db;
+    background: var(--mx-red, #e0302c);
     border: 2px solid #e0e0e0;
     cursor: pointer;
   }
@@ -460,7 +460,7 @@
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: #37a8db;
+    background: var(--mx-red, #e0302c);
     border: 2px solid #e0e0e0;
     cursor: pointer;
   }
@@ -485,7 +485,7 @@
   }
 
   .track-color-select select:hover {
-    border-color: #37a8db;
+    border-color: var(--mx-red, #e0302c);
   }
 
   .model-select {
@@ -505,7 +505,7 @@
   }
 
   .model-select select:hover {
-    border-color: #37a8db;
+    border-color: var(--mx-red, #e0302c);
   }
 
   .track-legend {

@@ -337,13 +337,13 @@
   .shm-note { font-size: 12px; color: #888; padding: 4px 2px; }
   .shm-note.warn { color: #f5a623; }
 
-  .shm-section { margin: 6px 0 2px; font-size: 11px; font-weight: 600; color: #37a8db; text-transform: uppercase; letter-spacing: 0.5px; }
+  .shm-section { margin: 6px 0 2px; font-size: 11px; font-weight: 600; color: var(--mx-red, #e0302c); text-transform: uppercase; letter-spacing: 0.5px; }
 
   /* Collapsible header (like the Raw HID monitor box). */
   .shm-collapse { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 4px; color: #cfcfcf; padding: 5px 7px; cursor: pointer; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-  .shm-collapse:hover { border-color: #37a8db; }
+  .shm-collapse:hover { border-color: var(--mx-red, #e0302c); }
   .cc-caret { color: #9cc6d9; font-size: 11px; }
-  .cc-title { color: #37a8db; }
+  .cc-title { color: var(--mx-red, #e0302c); }
 
   /* Fixed two-column grid sized to the ~380px compact field. */
   .shm-grid, .sh-approach { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; padding: 6px 2px; }
@@ -363,7 +363,7 @@
   .sh-row.empty { opacity: 0.55; }
   .sh-head { display: flex; align-items: center; gap: 6px; }
   .sh-caret { background: none; border: none; color: #9cc6d9; cursor: pointer; font-size: 12px; width: 16px; flex: none; }
-  .sh-badge { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: #37a8db; color: #fff; font-size: 10px; font-weight: bold; flex: none; }
+  .sh-badge { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--mx-red, #e0302c); color: #fff; font-size: 10px; font-weight: bold; flex: none; }
   .sh-coord { width: 84px; flex: 1; min-width: 0; height: 24px; box-sizing: border-box; padding: 0 5px; font-size: 11px; color: #e0e0e0; background: #1f1f1f; border: 1px solid #444; border-radius: 4px; font-variant-numeric: tabular-nums; }
 
   .shm-actions { display: flex; gap: 6px; margin-top: 8px; }

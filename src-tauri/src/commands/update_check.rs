@@ -9,9 +9,9 @@
 use serde::Serialize;
 use serde_json::Value;
 
-const RELEASES_LATEST: &str = "https://api.github.com/repos/b14ckyy/Kite-GC/releases/latest";
-const RELEASES_LIST: &str = "https://api.github.com/repos/b14ckyy/Kite-GC/releases?per_page=10";
-const HTTP_USER_AGENT: &str = "Kite-GC update-check";
+const RELEASES_LATEST: &str = "https://api.github.com/repos/lendrik-kumar/MaxGCS/releases/latest";
+const RELEASES_LIST: &str = "https://api.github.com/repos/lendrik-kumar/MaxGCS/releases?per_page=10";
+const HTTP_USER_AGENT: &str = "MaxGCS update-check";
 
 /// A published release as the frontend needs it.
 #[derive(Serialize)]

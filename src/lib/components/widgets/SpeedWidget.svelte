@@ -134,9 +134,9 @@
     flex-direction: row;
     align-items: stretch;
     justify-content: space-between;
-    background: rgba(30, 30, 30, 0.75);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(20, 8, 8, 0.18);
+    backdrop-filter: blur(6px);
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.35));
     border-radius: calc(var(--ws) * 0.08);
     gap: calc(var(--ws) * 0.015);
     box-sizing: border-box;
@@ -158,7 +158,7 @@
   .w-label {
     font-size: calc(var(--ws) * 0.13);
     font-weight: 600;
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
@@ -208,7 +208,7 @@
   }
   .vbar-fill.thr {
     bottom: 0;
-    background: #37a8db;
+    background: var(--mx-red, #e0302c);
     transition: height 0.2s ease;
   }
   /* 25/50/75 % reference ticks on the throttle bar — thicker and overhanging both sides for clarity. */

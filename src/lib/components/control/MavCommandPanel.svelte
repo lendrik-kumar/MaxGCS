@@ -327,7 +327,7 @@
     font-size: 20px;
     font-weight: 700;
     letter-spacing: 0.5px;
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
   }
 
   .cc-takeoff {
@@ -359,7 +359,7 @@
 
   .cc-guided-hint {
     font-size: 11px;
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
     font-style: italic;
     text-align: center;
   }

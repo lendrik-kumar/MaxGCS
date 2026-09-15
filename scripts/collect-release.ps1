@@ -2,10 +2,10 @@
 # Kite Ground Control — collect + rename build outputs (Windows)
 # Renames Tauri's outputs to a unified scheme and drops them in <repo>/release/:
 #
-#     KiteGC_Windows_x64_<Version>_<Type>.<ext>
+#     MaxGCS_Windows_x64_<Version>_<Type>.<ext>
 #
 #   Type = installer  (NSIS -setup.exe)
-#        | portable   (kite-gc.exe, zipped with an empty `.portable` marker so the download keeps its
+#        | portable   (maxgcs.exe, zipped with an empty `.portable` marker so the download keeps its
 #                      data in a data/ folder next to the executable)
 #
 # One naming source shared by local builds (`just build` / `just build-windows`) AND the GitHub
@@ -20,7 +20,7 @@ $rel = Join-Path $target 'release'
 $bundle = Join-Path $rel 'bundle'
 $out = Join-Path $root 'release'
 
-$app = 'KiteGC'; $os = 'Windows'; $arch = 'x64'
+$app = 'MaxGCS'; $os = 'Windows'; $arch = 'x64'
 function Get-Name($type, $ext) { "${app}_${os}_${arch}_${version}_${type}.${ext}" }
 
 if (Test-Path $out) { Remove-Item $out -Recurse -Force }
@@ -40,21 +40,21 @@ Get-ChildItem (Join-Path $bundle 'nsis\*-setup.exe') -ErrorAction SilentlyContin
 }
 
 # Portable executable -> zip (+ a generated empty `.portable` marker).
-$exe = Join-Path $rel 'kite-gc.exe'
+$exe = Join-Path $rel 'maxgcs.exe'
 if (Test-Path $exe) {
-    $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ('kitegc-portable-' + [guid]::NewGuid())
+    $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ('maxgcs-portable-' + [guid]::NewGuid())
     New-Item -ItemType Directory -Path $tmp | Out-Null
-    Copy-Item $exe (Join-Path $tmp 'kite-gc.exe') -Force
+    Copy-Item $exe (Join-Path $tmp 'maxgcs.exe') -Force
     New-Item -ItemType File -Path (Join-Path $tmp '.portable') | Out-Null
     $dest = Get-Name 'portable' 'zip'
-    Compress-Archive -Path (Join-Path $tmp 'kite-gc.exe'), (Join-Path $tmp '.portable') -DestinationPath (Join-Path $out $dest) -Force
+    Compress-Archive -Path (Join-Path $tmp 'maxgcs.exe'), (Join-Path $tmp '.portable') -DestinationPath (Join-Path $out $dest) -Force
     Remove-Item $tmp -Recurse -Force
     $script:collected += $dest
 }
 
 # Delete the raw bundle output we just consumed. Tauri never prunes it, and leaving it is exactly
 # what lets stale, wrongly-versioned installers accumulate and get mis-collected next time. The
-# portable .exe comes straight from $rel\kite-gc.exe (a cargo output, overwritten each build), so
+# portable .exe comes straight from $rel\maxgcs.exe (a cargo output, overwritten each build), so
 # there's nothing to prune there.
 if ($collected.Count -gt 0) {
     Remove-Item (Join-Path $bundle 'nsis') -Recurse -Force -ErrorAction SilentlyContinue

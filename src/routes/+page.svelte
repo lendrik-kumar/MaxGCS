@@ -4,13 +4,14 @@
 -->
 
 <script lang="ts">
-  import { onDestroy, onMount, untrack } from "svelte";
+  import { onDestroy, onMount, untrack, flushSync } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { open, save } from "@tauri-apps/plugin-dialog";
   import { connection, availablePorts, bleDevices } from "$lib/stores/connection";
   import type { FcInfo, PortInfo, BleDeviceInfo, TransportType, ProtocolType } from "$lib/stores/connection";
   import { settings } from "$lib/stores/settings";
+  import { auth } from "$lib/stores/auth";
   import { isDebugMode } from "$lib/stores/debug";
   import { telemetry } from "$lib/stores/telemetry";
   import { startRadarListeners, configureRadar, setRadarCenter, setRadarNode } from "$lib/stores/radarTracking";
@@ -24,6 +25,7 @@
   import CesiumKeyPrompt from "$lib/components/CesiumKeyPrompt.svelte";
   import LogPlayer from "$lib/components/logbook/LogPlayer.svelte";
   import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
+  import SettingsAuthGate from "$lib/components/SettingsAuthGate.svelte";
   import UpdateDialog from "$lib/components/UpdateDialog.svelte";
   import { runUpdateCheck } from "$lib/controllers/updateCheck";
   import ContextMenu from "$lib/components/ContextMenu.svelte";
@@ -43,6 +45,7 @@
   import MavCommandPanel from "$lib/components/control/MavCommandPanel.svelte";
   import RcControlPanel from "$lib/components/control/RcControlPanel.svelte";
   import VideoPanel from "$lib/components/video/VideoPanel.svelte";
+  import RecordingsPanel from "$lib/components/video/RecordingsPanel.svelte";
   import RadarPanel from "$lib/components/RadarPanel.svelte";
   import AirspaceManagerPanel from "$lib/components/AirspaceManagerPanel.svelte";
   import { geozoneWorking } from "$lib/stores/geozone";
@@ -91,7 +94,7 @@
   import TerrainAnalysisPanel from "$lib/components/terrain/TerrainAnalysisPanel.svelte";
   import { editMode, replayActive, mission, missionFlags, missionDownload, missionUpload, missionFcInfo, markMissionSynced, loadedMissionId, missionSetWaypoints, launchPoint, hasLocation, toDeg, type Waypoint } from "$lib/stores/mission";
   import { pendingSystemSwitch, autopilotSystem, setAutopilotSystem, confirmSystemSwitch } from "$lib/stores/autopilotContext";
-  import { arduMission, arduSelectedWpIndex, arduLoadedMissionId, type ArduWaypoint } from "$lib/stores/missionArdupilot";
+  import { arduMission, arduSelectedWpIndex, arduLoadedMissionId, arduEditMode, type ArduWaypoint } from "$lib/stores/missionArdupilot";
   import { terrainAnalysis, patchTerrainAnalysis } from "$lib/stores/terrainAnalysis";
   import { DEFAULT_RADAR, DEFAULT_AIRSPACE, BUILTIN_ADSB_PROVIDERS } from "$lib/stores/settings";
   import type { AppSettings, InterfaceSettings, PanelConfig, RadarSettings, GcsMode, AirspaceSettings, SystemMessagesLevel, LogLevel } from "$lib/stores/settings";
@@ -116,6 +119,66 @@
     $layout.sideDock.sizeOverride ?? GRID_DEFAULTS.sideDockWidth
   );
 
+  // ── Dock resize handles (map ↔ telemetry strip, bottom-strip ↔ side-strip) ──
+  // Hand-rolled pointer drag, mirroring the existing miniResizeDown/Move/Up pattern used for the
+  // floating video frame. Both drag a CSS px length into layout.ts's sizeOverride (persisted).
+  // Start size is read directly off the element (getBoundingClientRect) rather than the
+  // bind:clientHeight/clientWidth reactive vars, so the very first drag is correct even before
+  // those bindings have had a chance to observe a resize.
+  const BOTTOM_DOCK_MIN = 120;
+  const SIDE_DOCK_MIN = 80;
+  let panelBottomOuterEl: HTMLDivElement | null = null;
+  let panelSideOuterEl: HTMLDivElement | null = null;
+  let bdResizing = false;
+  let bdStartY = 0;
+  let bdStartH = 0;
+  function bottomDockResizeDown(e: PointerEvent) {
+    e.stopPropagation();
+    e.preventDefault();
+    bdResizing = true;
+    bdStartY = e.clientY;
+    bdStartH = panelBottomOuterEl?.getBoundingClientRect().height || parseFloat(GRID_DEFAULTS.bottomDockHeight) || 200;
+    window.addEventListener('pointermove', bottomDockResizeMove);
+    window.addEventListener('pointerup', bottomDockResizeUp);
+  }
+  function bottomDockResizeMove(e: PointerEvent) {
+    if (!bdResizing) return;
+    const delta = bdStartY - e.clientY; // drag up → taller
+    const maxH = Math.round(winH * 0.6);
+    const newH = Math.min(maxH, Math.max(BOTTOM_DOCK_MIN, Math.round(bdStartH + delta)));
+    layout.setBottomDockHeight(`${newH}px`);
+  }
+  function bottomDockResizeUp() {
+    bdResizing = false;
+    window.removeEventListener('pointermove', bottomDockResizeMove);
+    window.removeEventListener('pointerup', bottomDockResizeUp);
+  }
+
+  let sdResizing = false;
+  let sdStartX = 0;
+  let sdStartW = 0;
+  function sideDockResizeDown(e: PointerEvent) {
+    e.stopPropagation();
+    e.preventDefault();
+    sdResizing = true;
+    sdStartX = e.clientX;
+    sdStartW = panelSideOuterEl?.getBoundingClientRect().width || parseFloat(GRID_DEFAULTS.sideDockWidth) || 200;
+    window.addEventListener('pointermove', sideDockResizeMove);
+    window.addEventListener('pointerup', sideDockResizeUp);
+  }
+  function sideDockResizeMove(e: PointerEvent) {
+    if (!sdResizing) return;
+    const delta = sdStartX - e.clientX; // drag left → wider
+    const maxW = Math.round(winW * 0.5);
+    const newW = Math.min(maxW, Math.max(SIDE_DOCK_MIN, Math.round(sdStartW + delta)));
+    layout.setSideDockWidth(`${newW}px`);
+  }
+  function sideDockResizeUp() {
+    sdResizing = false;
+    window.removeEventListener('pointermove', sideDockResizeMove);
+    window.removeEventListener('pointerup', sideDockResizeUp);
+  }
+
   // Map view mode: 2D (Leaflet) or 3D (CesiumJS)
   let mapViewMode = $state<'2d' | '3d'>('2d');
   // 3D is expensive to spin up (Cesium viewer + terrain). Mount it lazily on the
@@ -126,7 +189,11 @@
   $effect(() => { if (mapViewMode === '3d') map3dEverOpened = true; });
   // Waypoints can only be edited on the 2D map → entering edit mode forces 2D (untracked read/write so
   // toggling the view later doesn't re-trigger this; it reacts to the edit-mode transition only).
-  $effect(() => { if ($editMode) untrack(() => { if (mapViewMode === '3d') mapViewMode = '2d'; }); });
+  // Both mission edit-mode stores are checked — INAV's `editMode` and ArduPilot/PX4's `arduEditMode` —
+  // since the 3D map (Map3D.svelte) only draws a read-only mission overlay for either firmware; without
+  // this, entering ArduPilot edit mode while on the 3D map left clicks hitting the Cesium globe with no
+  // click-to-add-waypoint handler at all, so nothing appeared on the map or in the mission list.
+  $effect(() => { if ($editMode || $arduEditMode) untrack(() => { if (mapViewMode === '3d') mapViewMode = '2d'; }); });
   // Map3D instance handle — used to read the 3D camera focus on a 3D→2D switch so
   // the 2D map can re-centre on the same spot (keeping its own zoom).
   let map3dRef: {
@@ -554,6 +621,7 @@
 
   // Shared in-app dialog (replaces all native confirm/alert calls)
   let confirmDialog: ReturnType<typeof ConfirmDialog>;
+  let authGate: ReturnType<typeof SettingsAuthGate>;
   let endFlightDialog: ReturnType<typeof EndFlightDialog>;
   let recoveryPrompt: ReturnType<typeof RecoveryPrompt>;
   let disconnectArmedDialog: ReturnType<typeof DisconnectArmedDialog>;
@@ -613,6 +681,9 @@
   // RC control (INAV RC over MSP) — two stacked sticks + a signal arc; opt-in via settings.
   const ICON_RC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3" width="17" height="18" rx="2.5"/><circle cx="8" cy="9" r="2.1"/><circle cx="16" cy="9" r="2.1"/><path d="M6.5 15.5h11"/><path d="M6.5 18h6"/></svg>';
 
+  // Record dot in a ring (Recordings) — deliberately distinct from the camera-body Video icon.
+  const ICON_RECORDINGS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.2" fill="currentColor" stroke="none"/></svg>';
+
   // The vehicle-control panel is MAVLink-only (ArduPilot/PX4) and only meaningful while connected.
   const isMavlinkConnected = $derived(
     $connection.status === 'connected' && $connection.protocolType === 'mavlink'
@@ -641,6 +712,7 @@
     { id: "radar", label: () => $t('nav.radar'), icon: ICON_RADAR },
     { id: "airspace", label: () => $t('nav.airspace'), icon: ICON_AIRSPACE },
     { id: "video", label: () => $t('nav.video'), icon: ICON_VIDEO },
+    { id: "recordings", label: () => $t('nav.recordings'), icon: ICON_RECORDINGS },
     { id: "settings", label: () => $t('nav.settings'), icon: ICON_SETTINGS },
   ];
   // Airspace tab shows when its master switch is on, OR when a geozone-capable INAV FC is connected (so
@@ -712,6 +784,9 @@
   navPanelOpen = saved.navPanelOpen;
   // Drop any legacy "-v2" suffix from a persisted tab (the migration scaffolding is gone now).
   activeTab = (saved.activeTab ?? 'uav-info').replace(/-v2$/, '');
+  // Settings is password-gated (see stores/auth.ts) and the unlock state never persists across
+  // restarts — if the app was last left open on Settings, don't silently reopen it unauthenticated.
+  if (untrack(() => activeTab) === 'settings') navPanelOpen = false;
   attitudeRateHz = saved.attitudeRateHz;
   positionRateHz = saved.positionRateHz;
   airspeedEnabled = saved.airspeedEnabled;
@@ -953,18 +1028,6 @@
   // Auto-start video with the last settings if it was running at last close.
   if (typeof window !== 'undefined') void initVideo();
 
-  function toggleNavPanel() {
-    navPanelOpen = !navPanelOpen;
-    // The X hides all panels — including the terrain overlay
-    if (!navPanelOpen) {
-      editMode.set(false);
-      patchTerrainAnalysis({ open: false });
-    }
-    settings.patch({ navPanelOpen });
-    // Let the map recalculate its size after panel animation
-    setTimeout(() => window.dispatchEvent(new Event("resize")), 320);
-  }
-
   function minimizeLogbook() {
     if (logbookHasFlightOnMap && !logbookMinimized) {
       logbookMinimized = true;
@@ -1031,13 +1094,35 @@
     }
   }
 
-  function selectTab(tabId: string) {
+  async function selectTab(tabId: string) {
+    // The nav rail has no hamburger/toggle step any more — every button is always visible.
+    // Re-clicking the already-open active tab now closes its panel (matching a standard
+    // always-on icon-rail pattern); clicking any other tab opens/switches to it.
+    const isReclickingOpenTab = navPanelOpen && !terrainOpen && tabId === activeTab;
+    const isReclickingOpenTerrain = navPanelOpen && terrainOpen && tabId === 'terrain';
+    if (isReclickingOpenTab || isReclickingOpenTerrain) {
+      navPanelOpen = false;
+      // Closing the panel must NOT drop mission edit mode — closing it (to get an unobstructed
+      // map) while still placing waypoints is the whole point; see selectTab's other editMode.set(false)
+      // below, which correctly clears it only when switching to a genuinely different tab.
+      patchTerrainAnalysis({ open: false });
+      settings.patch({ navPanelOpen: false });
+      flushSync();
+      setTimeout(() => window.dispatchEvent(new Event("resize")), 320);
+      return;
+    }
+    // Settings is password-gated — every other tab (mission planning, flying, etc.) stays open.
+    // Unlock state is session-only (stores/auth.ts), so this re-prompts on every app restart.
+    if (tabId === 'settings' && !$auth.unlocked) {
+      const ok = await authGate?.show($settings.security.passwordHash ? 'unlock' : 'setup');
+      if (!ok) return;
+    }
     // Terrain Analysis is a full-width overlay shown in place of the panel content.
-    // Like every other nav-rail button it only ever OPENS/selects (re-clicking the active
-    // button does not close it) — closing happens by closing the whole nav rail (the
-    // hamburger X) or by selecting another tab.
     if (tabId === 'terrain') {
       patchTerrainAnalysis({ open: true });
+      navPanelOpen = true;
+      settings.patch({ navPanelOpen: true });
+      flushSync();
       return;
     }
     // Selecting another tab switches away from the terrain overlay
@@ -1052,8 +1137,15 @@
     if (!navPanelOpen) {
       navPanelOpen = true;
       settings.patch({ navPanelOpen: true });
-      setTimeout(() => window.dispatchEvent(new Event("resize")), 320);
     }
+    // Force the panel switch to commit to the DOM immediately, rather than waiting for Svelte's
+    // normal scheduler — belt-and-braces against any environment where that flush gets delayed.
+    flushSync();
+    // Switching between two already-open panels (navPanelOpen was already true, e.g. the default
+    // on a fresh launch) doesn't naturally trigger any layout recalculation the way opening the
+    // panel from closed does — nudge it the same way, matching the existing pattern used elsewhere
+    // in this function for exactly this class of "the WebView needs a kick" issue.
+    setTimeout(() => window.dispatchEvent(new Event("resize")), 320);
   }
 
   async function chooseFlightLogPath() {
@@ -2434,7 +2526,7 @@
 
 <svelte:window bind:innerWidth={winW} bind:innerHeight={winH} />
 
-<div class="ui-root" style:--ui-scale={uiScale}>
+<div class="ui-root" style:--ui-scale={uiScale} style:--grid-bottom-height={gridBottomHeight} style:--grid-nav-rail-width={GRID_DEFAULTS.navRailWidth}>
   <!-- Window resize grips — outside `.ui-scale` so position:fixed stays viewport-relative.
        Re-adds edge resizing lost when the native decorations are disabled. -->
   <WindowResizeBorders />
@@ -2525,6 +2617,7 @@
   <div class="ui-scale">
 
 <ConfirmDialog bind:this={confirmDialog} />
+<SettingsAuthGate bind:this={authGate} />
 <UpdateDialog />
 <CesiumKeyPrompt bind:open={cesiumKeyPromptOpen} onSave={cesiumKeySave} onRemindLater={cesiumKeyRemindLater} onIgnore={cesiumKeyIgnore} />
 <EndFlightDialog bind:this={endFlightDialog} {interfaceSettings} />
@@ -2539,6 +2632,7 @@
   class="app"
   style:--grid-bottom-height={gridBottomHeight}
   style:--grid-side-width={gridSideWidth}
+  style:--grid-nav-rail-width={GRID_DEFAULTS.navRailWidth}
 >
   <!-- ======= TOOLBAR ======= -->
   <div class="zone-toolbar">
@@ -2644,12 +2738,10 @@
     onSwitchSource={switchReplaySource}
   />
 
-  <!-- ======= FLOATING NAV PANEL SYSTEM ======= -->
+  <!-- ======= NAV RAIL ======= -->
   <NavRail
-    open={navPanelOpen}
     activeTab={railActiveTab}
     tabs={railTabs}
-    onToggle={toggleNavPanel}
     onSelectTab={selectTab}
   />
 
@@ -2761,6 +2853,8 @@
       {/key}
     {:else if activeTab === 'video'}
       <VideoPanel />
+    {:else if activeTab === 'recordings'}
+      <RecordingsPanel />
     {:else if DEV_MODE && activeTab === 'dev-playground'}
       <PanelPlayground initial="compact" label="DEV Playground" />
     {/if}
@@ -2771,29 +2865,59 @@
     <TerrainAnalysisPanel track={selectedTrackWithPosition} live={isPrimaryConnected} {interfaceSettings} confirm={showDialog} />
   {/if}
 
-  <!-- ======= BOTTOM WIDGET PANEL ======= -->
-  <div class="zone-bottom-dock" class:zone-hidden={!$layout.bottomDock.visible} class:panel-editing={widgetEditMode} bind:clientWidth={bottomDockW} bind:clientHeight={bottomDockH} style:padding-left="{videoReserve}px">
-    <div class="panel-bottom-wrap">
-      <button
-        class="widget-edit-btn widget-edit-btn--panel"
-        class:active={widgetEditMode}
-        onclick={() => widgetEditMode = !widgetEditMode}
-        title={widgetEditMode ? $t('widgets.exitEdit') : $t('widgets.editLayout')}
-      >
-        ✎
-      </button>
+  <!-- ======= TELEMETRY DOCK (below the map: horizontal bottom strip + vertical side strip,
+       side by side — neither overlays the map any more) ======= -->
+  <div class="zone-bottom-dock" class:panel-editing={widgetEditMode}>
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div
+      class="dock-resize-handle dock-resize-handle--h"
+      onpointerdown={bottomDockResizeDown}
+      title={$t('widgets.resizeDock')}
+    ></div>
+    <div class="panel-bottom-outer" bind:this={panelBottomOuterEl} class:zone-hidden={!$layout.bottomDock.visible} bind:clientWidth={bottomDockW} bind:clientHeight={bottomDockH} style:padding-left="{videoReserve}px">
+      <div class="panel-bottom-wrap">
+        <button
+          class="widget-edit-btn widget-edit-btn--panel"
+          class:active={widgetEditMode}
+          onclick={() => widgetEditMode = !widgetEditMode}
+          title={widgetEditMode ? $t('widgets.exitEdit') : $t('widgets.editLayout')}
+        >
+          ✎
+        </button>
 
+        <WidgetPanel
+          widgetIds={panels.bottom}
+          orientation="horizontal"
+          availableVmin={bottomAvailUnits}
+          pxPerVmin={bottomPxPerUnit}
+          {telem}
+          editing={widgetEditMode}
+          {interfaceSettings}
+          onreorder={handleReorder}
+          onreceive={handleReceive}
+          panelId="bottom"
+        />
+      </div>
+    </div>
+
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div
+      class="dock-resize-handle dock-resize-handle--v"
+      onpointerdown={sideDockResizeDown}
+      title={$t('widgets.resizeDock')}
+    ></div>
+    <div class="panel-side-outer" bind:this={panelSideOuterEl} class:zone-hidden={!$layout.sideDock.visible} bind:clientWidth={sideDockW} bind:clientHeight={sideDockH}>
       <WidgetPanel
-        widgetIds={panels.bottom}
-        orientation="horizontal"
-        availableVmin={bottomAvailUnits}
-        pxPerVmin={bottomPxPerUnit}
+        widgetIds={panels.right}
+        orientation="vertical"
+        availableVmin={rightAvailUnits}
+        pxPerVmin={sidePxPerUnit}
         {telem}
         editing={widgetEditMode}
         {interfaceSettings}
         onreorder={handleReorder}
         onreceive={handleReceive}
-        panelId="bottom"
+        panelId="right"
       />
     </div>
   </div>
@@ -2805,23 +2929,7 @@
   <!-- ======= FLOATING VIDEO WINDOW ======= -->
   <FloatingVideoWindow />
 
-  <!-- ======= RIGHT WIDGET PANEL ======= -->
-  <div class="zone-side-dock" class:zone-hidden={!$layout.sideDock.visible} class:panel-editing={widgetEditMode} bind:clientWidth={sideDockW} bind:clientHeight={sideDockH}>
-    <WidgetPanel
-      widgetIds={panels.right}
-      orientation="vertical"
-      availableVmin={rightAvailUnits}
-      pxPerVmin={sidePxPerUnit}
-      {telem}
-      editing={widgetEditMode}
-      {interfaceSettings}
-      onreorder={handleReorder}
-      onreceive={handleReceive}
-      panelId="right"
-    />
-  </div>
-
-  <!-- ======= MAP CONTROLS RESERVED AREA ======= -->
+  <!-- ======= MAP CONTROLS RESERVED AREA (bottom-right corner of the confined map panel) ======= -->
   <div class="zone-map-controls">
     <!-- reserved for map control buttons (zoom, 3D toggle etc.) -->
   </div>
@@ -2890,8 +2998,8 @@
     margin: 0;
     padding: 0;
     font-family: 'Segoe UI', Tahoma, sans-serif;
-    background-color: #3d3f3e;
-    color: #e0e0e0;
+    background-color: var(--mx-bg, #17181a);
+    color: var(--mx-text, #e0e0e0);
     overflow: hidden;
     /* Block accidental text selection on drag everywhere (UI is app-like, not a document) */
     user-select: none;
@@ -2945,13 +3053,16 @@
     display: grid;
     height: 100%;
     position: relative;
+    /* Nav rail column is fixed-width (icon-only rail, nothing to reflow — confirmed with user
+       it does not get a resize handle). Map + telemetry strip share column 1 and split the
+       remaining height via the bottom-dock resize handle. */
     grid-template-rows: 53px 1fr var(--grid-bottom-height) 24px;
-    grid-template-columns: 62px 1fr var(--grid-side-width) 54px;
+    grid-template-columns: 1fr var(--grid-nav-rail-width);
     grid-template-areas:
-      "toolbar      toolbar      toolbar      toolbar"
-      "nav-rail     panel        side-dock    side-dock"
-      "nav-rail     bottom-dock  bottom-dock  map-controls"
-      "status-bar   status-bar   status-bar   status-bar";
+      "toolbar      toolbar"
+      "map          nav-rail"
+      "bottom-dock  nav-rail"
+      "status-bar   status-bar";
   }
 
   /* The chrome layer sits ABOVE the unzoomed map, so its empty centre must let pointer
@@ -2973,7 +3084,6 @@
     pointer-events: auto;
   }
   .app > :global(.zone-bottom-dock),
-  .app > :global(.zone-side-dock),
   .app > :global(.zone-map-controls) {
     pointer-events: none;
   }
@@ -2984,17 +3094,19 @@
     z-index: 200;
   }
 
-  /* Map layer — UNZOOMED overlay over the content area. The toolbar (53px) and status
-     bar (24px) live in the zoomed `.ui-scale`, so their visual heights are *--ui-scale;
-     the map offsets track that. z-index 0 keeps it behind the chrome normally. When the
-     view is swapped into the floating window it flips above the chrome (.in-frame) and
-     uses the inline rect (already *--ui-scale in mapFrameStyle). */
+  /* Map layer — UNZOOMED overlay confined to the upper-left map panel (toolbar / telemetry
+     dock / nav rail all live in the zoomed `.ui-scale`, so their visual sizes are *--ui-scale;
+     the map's insets track that, same as before). z-index 0 keeps it behind the chrome
+     normally. When the view is swapped into the floating window it flips above the chrome
+     (.in-frame) and uses the inline rect (already *--ui-scale in mapFrameStyle). --grid-bottom-height
+     and --grid-nav-rail-width are set on `.ui-root` (see above) so this layer — a sibling of
+     `.ui-scale`, not a descendant — can read the same dock sizes the resize handles drive. */
   .layer-map {
     position: absolute;
     top: calc(53px * var(--ui-scale, 1));
     left: 0;
-    right: 0;
-    bottom: calc(24px * var(--ui-scale, 1));
+    right: calc(var(--grid-nav-rail-width, 62px) * var(--ui-scale, 1));
+    bottom: calc((var(--grid-bottom-height, 200px) + 24px) * var(--ui-scale, 1));
     z-index: 0;
     overflow: hidden;
   }
@@ -3066,10 +3178,10 @@
     right: 0;
     cursor: nesw-resize;
     border-radius: 0 8px 0 8px;
-    background: linear-gradient(225deg, rgba(55, 168, 219, 0.85) 42%, transparent 42%);
+    background: linear-gradient(225deg, rgba(224, 48, 44, 0.85) 42%, transparent 42%);
   }
   .mf-resize:hover {
-    background: linear-gradient(225deg, rgba(55, 168, 219, 1) 50%, transparent 50%);
+    background: linear-gradient(225deg, rgba(224, 48, 44, 1) 50%, transparent 50%);
   }
   /* Full-size video shown in the content area when swapped (videoPrimary). The wrapper holds the
      chrome inset + black backdrop; the video fills it. */
@@ -3108,15 +3220,23 @@
     z-index: -1;
   }
 
+  /* Telemetry dock — a flex row below the map holding the horizontal bottom-widget strip and
+     the vertical side-widget strip side by side (neither overlays the map any more). Each
+     strip keeps its own `zone-hidden` toggle so layout.ts profiles (e.g. 'mission' hides only
+     the side strip) still work exactly as before. */
   .zone-bottom-dock {
     grid-area: bottom-dock;
+    position: relative;
     z-index: 100;
     display: flex;
+    align-items: stretch;
     justify-content: center;
-    align-items: center;
     pointer-events: none;
-    overflow: hidden;
+    overflow: visible;
     padding: 6px 0;
+    background: linear-gradient(180deg, rgba(40, 14, 14, 0.55) 0%, rgba(15, 7, 7, 0.85) 100%);
+    border-top: 1px solid var(--mx-border-strong, #46484e);
+    box-shadow: 0 -6px 24px rgba(224, 48, 44, 0.10);
   }
 
   .zone-bottom-dock.panel-editing {
@@ -3127,27 +3247,59 @@
     pointer-events: auto;
   }
 
-  .zone-side-dock {
-    grid-area: side-dock;
-    z-index: 100;
+  .panel-bottom-outer {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .panel-side-outer {
+    box-sizing: border-box;
+    flex: 0 0 var(--grid-side-width);
+    width: var(--grid-side-width);
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    pointer-events: none;
     overflow: hidden;
     padding: 0 6px;
   }
 
-  .zone-side-dock.panel-editing {
-    pointer-events: auto;
+  /* Hand-rolled resize handles — drag → layout.ts sizeOverride (persisted). */
+  .dock-resize-handle {
+    flex: 0 0 auto;
   }
 
-  .zone-side-dock > :global(*) {
-    pointer-events: auto;
+  .dock-resize-handle--h {
+    position: absolute;
+    top: -6px;
+    left: 0;
+    right: 0;
+    height: 10px;
+    cursor: ns-resize;
+    touch-action: none;
+  }
+
+  .dock-resize-handle--v {
+    width: 10px;
+    align-self: stretch;
+    cursor: ew-resize;
+    touch-action: none;
+  }
+
+  .dock-resize-handle--h:hover,
+  .dock-resize-handle--h:active,
+  .dock-resize-handle--v:hover,
+  .dock-resize-handle--v:active {
+    background: var(--mx-red-dim, rgba(224, 48, 44, 0.35));
   }
 
   .zone-map-controls {
-    grid-area: map-controls;
+    position: absolute;
+    right: calc(var(--grid-nav-rail-width, 62px) + 10px);
+    bottom: calc(var(--grid-bottom-height) + 10px);
     z-index: 90;
     pointer-events: none;
   }
@@ -3176,8 +3328,8 @@
   .widget-edit-btn {
     width: 28px;
     height: 28px;
-    background: rgba(46, 46, 46, 0.85);
-    border: 1px solid rgba(55, 168, 219, 0.3);
+    background: var(--mx-panel, rgba(46, 46, 46, 0.85));
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.3));
     border-radius: 6px;
     color: #949494;
     font-size: 13px;
@@ -3195,14 +3347,14 @@
   }
 
   .widget-edit-btn:hover {
-    background: rgba(55, 168, 219, 0.2);
+    background: var(--mx-red-dim, rgba(224, 48, 44, 0.2));
     color: #e0e0e0;
   }
 
   .widget-edit-btn.active {
-    background: rgba(55, 168, 219, 0.25);
-    border-color: #37a8db;
-    color: #37a8db;
+    background: rgba(224, 48, 44, 0.25);
+    border-color: var(--mx-red, #e0302c);
+    color: var(--mx-red, #e0302c);
   }
 
 

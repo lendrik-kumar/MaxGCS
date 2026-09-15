@@ -91,13 +91,13 @@
     width: 100%;
     height: 34px;
     border-radius: 18px;
-    border: 1px solid var(--as-border, #37a8db);
-    background: var(--as-bg, rgba(55, 168, 219, 0.1));
+    border: 1px solid var(--as-border, #e0302c);
+    background: var(--as-bg, rgba(224, 48, 44, 0.1));
     overflow: hidden;
     user-select: none;
     touch-action: none;
   }
-  .arm-slider.standard { --as-border: #37a8db; --as-bg: rgba(55, 168, 219, 0.1);  --as-knob: #37a8db; --as-fg: #cfe8f4; }
+  .arm-slider.standard { --as-border: var(--mx-red, #e0302c); --as-bg: var(--mx-red-dim, rgba(224, 48, 44, 0.1));  --as-knob: var(--mx-red, #e0302c); --as-fg: #f4d4d3; }
   .arm-slider.warning  { --as-border: #d4a017; --as-bg: rgba(212, 160, 23, 0.1);  --as-knob: #d4a017; --as-fg: #f0dca6; }
   .arm-slider.danger   { --as-border: #d40000; --as-bg: rgba(212, 0, 0, 0.12);    --as-knob: #d40000; --as-fg: #f3b5b5; }
 
@@ -127,7 +127,7 @@
     height: 30px;
     border-radius: 50%;
     border: none;
-    background: var(--as-knob, #37a8db);
+    background: var(--as-knob, #e0302c);
     color: #11181d;
     cursor: grab;
     display: flex;

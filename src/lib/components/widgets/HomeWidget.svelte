@@ -62,7 +62,7 @@
          so rotation stays clean and the rotated corners never exceed the box. -->
     <svg viewBox="0 0 60 60" class="home-arrow">
       <g transform="rotate({relativeAngle}, 30, 30)">
-        <polygon points="30,4 14,52 30,42 46,52" fill="#37a8db" />
+        <polygon points="30,4 14,52 30,42 46,52" fill="var(--mx-red-bright, #ff4d47)" />
       </g>
     </svg>
     <span class="w-dist">{distanceText()}</span>
@@ -80,9 +80,9 @@
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    background: rgba(30, 30, 30, 0.75);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(20, 8, 8, 0.18);
+    backdrop-filter: blur(6px);
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.35));
     border-radius: calc(var(--ws) * 0.08);
     gap: calc(var(--ws) * 0.02);
     box-sizing: border-box;
@@ -91,7 +91,7 @@
   .w-label {
     font-size: calc(var(--ws) * 0.13);
     font-weight: 600;
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }

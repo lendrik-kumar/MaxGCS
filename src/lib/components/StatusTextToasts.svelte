@@ -87,7 +87,7 @@
   .m-text { overflow: hidden; text-overflow: ellipsis; }
 
   .msg-line.info    { color: #cfe7f3; }
-  .msg-line.info .m-icon { color: #37a8db; }
+  .msg-line.info .m-icon { color: var(--mx-red, #e0302c); }
   .msg-line.warning { color: #f6e3b0; }
   .msg-line.warning .m-icon { color: #f4c020; }
   .msg-line.error   { color: #f6c9c9; background: rgba(120, 30, 30, 0.45); }

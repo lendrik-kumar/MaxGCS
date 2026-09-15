@@ -3,7 +3,7 @@
 # Kite Ground Control — collect + rename build outputs (Linux + macOS)
 # Renames Tauri's outputs to a unified scheme and drops them in <repo>/release/:
 #
-#     KiteGC_<OS>_<Arch>_<Version>_<Type>.<ext>
+#     MaxGCS_<OS>_<Arch>_<Version>_<Type>.<ext>
 #
 #   Type = installer   (.deb / .rpm / .dmg)
 #        | standalone  (.AppImage / .app-as-zip — self-contained runnable app)
@@ -19,7 +19,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="$(grep '"version"' "$ROOT/package.json" | head -1 | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')"
 TARGET="${CARGO_TARGET_DIR:-$ROOT/src-tauri/target}"
 OUT="$ROOT/release"
-APP="KiteGC"
+APP="MaxGCS"
 
 case "$(uname -s)" in
     Darwin) OS="macOS" ;;
@@ -89,14 +89,14 @@ else
     grab_file "$BUNDLE/deb/*.deb" installer deb
     grab_file "$BUNDLE/rpm/*.rpm" installer rpm
     grab_file "$BUNDLE/appimage/*.AppImage" standalone AppImage
-    zip_portable "$REL/kite-gc" kite-gc
+    zip_portable "$REL/maxgcs" maxgcs
 fi
 
 # Now that the fresh outputs live in release/ under our unified names, delete the raw bundle
 # outputs we just consumed. Tauri never prunes this dir itself, so leaving them is exactly what
 # lets stale, wrongly-versioned artifacts accumulate and get mis-collected next time. Removing
 # them (both the packages and Tauri's staging dirs beside them) keeps the source clean. The bare
-# CLI binary at $REL/kite-gc is a cargo output, not a bundle artifact — it stays.
+# CLI binary at $REL/maxgcs is a cargo output, not a bundle artifact — it stays.
 if [ ${#collected[@]} -gt 0 ]; then
     if [ "$OS" = "macOS" ]; then
         rm -rf "$BUNDLE/dmg" "$BUNDLE/macos"

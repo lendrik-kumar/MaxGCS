@@ -2,8 +2,8 @@
 # Source = docs/user/ only (dev docs under docs/ are NOT published). See
 # docs/active/USER_DOCS_ARCHITECTURE.md. Local preview: `mkdocs serve` (http://localhost:8000).
 
-site_name: Kite Ground Control
-site_description: User documentation for Kite Ground Control — an INAV / ArduPilot / PX4 ground control station.
+site_name: MaxGCS
+site_description: User documentation for MaxGCS — an INAV / ArduPilot / PX4 ground control station.
 site_url: https://b14ckyy.github.io/Kite-GC/
 repo_url: https://github.com/b14ckyy/Kite-GC
 repo_name: b14ckyy/Kite-GC
@@ -16,7 +16,7 @@ theme:
   name: material
   language: en
   custom_dir: overrides
-  logo: assets/branding/kitegc-icon-white.svg
+  logo: assets/branding/maxgcs-icon-white.svg
   favicon: assets/branding/favicon.png
   palette:
     # Dark by default (matches the app's INAV dark theme), with a light toggle.

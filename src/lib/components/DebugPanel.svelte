@@ -956,7 +956,7 @@
     padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid #272727;
   }
   .perf-fps { font-size: 13px; color: #949494; }
-  .perf-fps b { color: #37a8db; font-size: 16px; font-variant-numeric: tabular-nums; }
+  .perf-fps b { color: var(--mx-red, #e0302c); font-size: 16px; font-variant-numeric: tabular-nums; }
   .perf-refresh {
     margin-left: auto; padding: 3px 10px; font-size: 11px;
     background: #434343; color: #e0e0e0; border: 1px solid #555; border-radius: 4px; cursor: pointer;
@@ -964,7 +964,7 @@
   .perf-refresh:hover { background: #4f4f4f; }
   .perf-section {
     margin: 12px 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.5px; color: #37a8db;
+    letter-spacing: 0.5px; color: var(--mx-red, #e0302c);
   }
   .perf-row { display: flex; align-items: center; justify-content: space-between; padding: 3px 0; }
   .perf-row span { color: #c0c0c0; }
@@ -983,7 +983,7 @@
     width: 540px;
     max-height: calc(100vh - 53px - 24px - 30px);
     background: rgba(30, 30, 30, 0.95);
-    border: 1px solid rgba(55, 168, 219, 0.4);
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.4));
     border-radius: 8px;
     z-index: 150;
     display: flex;
@@ -1005,14 +1005,14 @@
     justify-content: space-between;
     align-items: center;
     padding: 8px 12px;
-    background: rgba(55, 168, 219, 0.1);
-    border-bottom: 1px solid rgba(55, 168, 219, 0.2);
+    background: var(--mx-red-dim, rgba(224, 48, 44, 0.1));
+    border-bottom: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.2));
   }
 
   .debug-title {
     font-size: 12px;
     font-weight: 600;
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
   }
 
   .debug-close {
@@ -1054,8 +1054,8 @@
   }
 
   .tab.active {
-    color: #37a8db;
-    border-bottom-color: #37a8db;
+    color: var(--mx-red, #e0302c);
+    border-bottom-color: var(--mx-red, #e0302c);
   }
 
   .inject-row {
@@ -1114,14 +1114,14 @@
 
   .inj-num:focus {
     outline: none;
-    border-color: #37a8db;
+    border-color: var(--mx-red, #e0302c);
   }
 
   .inj-btn {
-    background: rgba(55, 168, 219, 0.15);
-    border: 1px solid rgba(55, 168, 219, 0.3);
+    background: var(--mx-red-dim, rgba(224, 48, 44, 0.15));
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.3));
     border-radius: 3px;
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
     cursor: pointer;
     font-size: 12px;
     line-height: 1;
@@ -1129,20 +1129,20 @@
   }
 
   .inj-btn:hover {
-    background: rgba(55, 168, 219, 0.3);
+    background: var(--mx-red-dim, rgba(224, 48, 44, 0.3));
   }
 
   .dbg-btn {
-    background: rgba(55, 168, 219, 0.15);
-    border: 1px solid rgba(55, 168, 219, 0.3);
+    background: var(--mx-red-dim, rgba(224, 48, 44, 0.15));
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.3));
     border-radius: 3px;
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
     cursor: pointer;
     font-size: 12px;
     padding: 4px 10px;
   }
   .dbg-btn:hover {
-    background: rgba(55, 168, 219, 0.3);
+    background: var(--mx-red-dim, rgba(224, 48, 44, 0.3));
   }
 
   .debug-stats {
@@ -1252,7 +1252,7 @@
   }
 
   .debug-table tr:hover {
-    background: rgba(55, 168, 219, 0.05);
+    background: var(--mx-red-dim, rgba(224, 48, 44, 0.05));
   }
 
   .debug-table tr.inactive td {
@@ -1354,8 +1354,8 @@
   }
 
   .dot.on {
-    background: #37a8db;
-    box-shadow: 0 0 4px #37a8db;
+    background: var(--mx-red, #e0302c);
+    box-shadow: 0 0 4px var(--mx-red, #e0302c);
   }
 
   .status-badge {
@@ -1394,7 +1394,7 @@
   }
 
   .cap-path {
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1436,7 +1436,7 @@
   .gatt-svc {
     font-size: 10px;
     font-weight: 700;
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
     margin: 6px 0 2px;
     font-variant-numeric: tabular-nums;
   }

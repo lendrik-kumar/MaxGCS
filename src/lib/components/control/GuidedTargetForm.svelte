@@ -71,13 +71,13 @@
   .gtf-fly {
     width: 100%;
     height: 30px;
-    border: 1px solid #37a8db;
+    border: 1px solid var(--mx-red, #e0302c);
     border-radius: 5px;
-    background: rgba(55, 168, 219, 0.18);
-    color: #cfe8f4;
+    background: rgba(224, 48, 44, 0.18);
+    color: #f5d0ce;
     font-weight: 700;
     font-size: 12.5px;
     cursor: pointer;
   }
-  .gtf-fly:hover { background: rgba(55, 168, 219, 0.32); }
+  .gtf-fly:hover { background: rgba(224, 48, 44, 0.32); }
 </style>

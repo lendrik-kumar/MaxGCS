@@ -145,7 +145,10 @@
     <WindowControls />
   {/if}
   <div class="toolbar-left" data-tauri-drag-region>
-    <img class="logo" src="/branding/kitegc-wordmark-white.svg" alt={$t('app.brand')} draggable="false" data-tauri-drag-region />
+    <div class="brand-container" data-tauri-drag-region>
+      <img src="/branding/maxgcs-icon-white.svg" alt="MaxGCS Logo" class="brand-logo" data-tauri-drag-region />
+      <span class="logo" data-tauri-drag-region>{$t('app.brand')}</span>
+    </div>
     <span class="version" data-tauri-drag-region>v{appVersion}</span>
   </div>
   <div class="toolbar-center" data-tauri-drag-region>
@@ -290,8 +293,8 @@
     align-items: center;
     padding: 0 16px;
     height: 50px;
-    background: #2e2e2e;
-    border-bottom: 3px solid #37a8db;
+    background: var(--mx-panel, #2e2e2e);
+    border-bottom: 3px solid var(--mx-red, #e0302c);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     position: relative;
     z-index: 200;
@@ -316,11 +319,28 @@
     gap: 8px;
   }
 
+  .brand-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .brand-logo {
+    height: 22px;
+    width: 22px;
+    object-fit: contain;
+    user-select: none;
+    pointer-events: none;
+  }
+
   .logo {
     display: block;
-    height: 36px;
-    width: auto;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: var(--mx-text, #e6e7e9);
     user-select: none;
+    white-space: nowrap;
   }
 
   .version {
@@ -431,13 +451,13 @@
     transition: background-color 0.2s, color 0.2s, border-color 0.2s;
   }
   .relay-toggle:hover {
-    background: rgba(55, 168, 219, 0.18);
+    background: var(--mx-red-dim, rgba(224, 48, 44, 0.18));
     color: #e0e0e0;
   }
   .relay-toggle.open {
-    background: rgba(55, 168, 219, 0.22);
-    border-color: #37a8db;
-    color: #37a8db;
+    background: rgba(224, 48, 44, 0.22);
+    border-color: var(--mx-red, #e0302c);
+    color: var(--mx-red, #e0302c);
   }
 
   /* Unified toolbar form controls — match the control-library height (28px), so selects, inputs,
@@ -484,9 +504,9 @@
     transition: background-color 0.2s, color 0.2s, border-color 0.2s;
   }
   .bt-edit:hover {
-    background: rgba(55, 168, 219, 0.18);
-    color: #37a8db;
-    border-color: #37a8db;
+    background: var(--mx-red-dim, rgba(224, 48, 44, 0.18));
+    color: var(--mx-red, #e0302c);
+    border-color: var(--mx-red, #e0302c);
   }
 
   /* Drop the native number spinner — the up/down arrows are clutter in the toolbar. */

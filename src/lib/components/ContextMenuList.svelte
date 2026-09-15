@@ -100,7 +100,7 @@
     padding: 4px;
     background: rgba(30, 30, 30, 0.75);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(55, 168, 219, 0.35);
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.35));
     border-radius: 8px;
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
     user-select: none;
@@ -117,7 +117,7 @@
     white-space: nowrap;
   }
   .cm-item:hover {
-    background: rgba(55, 168, 219, 0.18);
+    background: rgba(224, 48, 44, 0.18);
   }
   .cm-item.disabled {
     color: #777;

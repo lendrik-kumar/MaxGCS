@@ -52,12 +52,50 @@ export const GRID_DEFAULTS = {
   sideDockWidth:    'clamp(150px, 15vw, 250px)',
 } as const;
 
+// ── Persistence ────────────────────────────────────────────────
+// Only the user's dragged size overrides survive a restart — profile/visibility
+// stay session-only (a profile switch always resets to its preset, by design).
+
+const STORAGE_KEY = 'kite-gc-layout';
+
+interface PersistedLayout {
+  bottomSizeOverride: string | null;
+  sideSizeOverride: string | null;
+}
+
+function loadPersisted(): PersistedLayout {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<PersistedLayout>;
+      return {
+        bottomSizeOverride: parsed.bottomSizeOverride ?? null,
+        sideSizeOverride: parsed.sideSizeOverride ?? null,
+      };
+    }
+  } catch {
+    // Ignore parse errors, use defaults
+  }
+  return { bottomSizeOverride: null, sideSizeOverride: null };
+}
+
+function savePersisted(state: LayoutState) {
+  const toSave: PersistedLayout = {
+    bottomSizeOverride: state.bottomDock.sizeOverride,
+    sideSizeOverride: state.sideDock.sizeOverride,
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+}
+
 // ── Store ──────────────────────────────────────────────────────
 
 function createLayout() {
+  const persisted = loadPersisted();
   const store = writable<LayoutState>({
     profile: 'flight',
     ...profilePresets.flight,
+    bottomDock: { ...profilePresets.flight.bottomDock, sizeOverride: persisted.bottomSizeOverride },
+    sideDock: { ...profilePresets.flight.sideDock, sizeOverride: persisted.sideSizeOverride },
   });
 
   return {
@@ -78,14 +116,22 @@ function createLayout() {
       store.update(s => ({ ...s, sideDock: { ...s.sideDock, visible } }));
     },
 
-    /** Override bottom dock height (CSS length or null for default). */
+    /** Override bottom dock height (CSS length or null for default). Persisted across restarts. */
     setBottomDockHeight(height: string | null) {
-      store.update(s => ({ ...s, bottomDock: { ...s.bottomDock, sizeOverride: height } }));
+      store.update(s => {
+        const next = { ...s, bottomDock: { ...s.bottomDock, sizeOverride: height } };
+        savePersisted(next);
+        return next;
+      });
     },
 
-    /** Override side dock width (CSS length or null for default). */
+    /** Override side dock width (CSS length or null for default). Persisted across restarts. */
     setSideDockWidth(width: string | null) {
-      store.update(s => ({ ...s, sideDock: { ...s.sideDock, sizeOverride: width } }));
+      store.update(s => {
+        const next = { ...s, sideDock: { ...s.sideDock, sizeOverride: width } };
+        savePersisted(next);
+        return next;
+      });
     },
   };
 }

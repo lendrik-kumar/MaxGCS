@@ -12,8 +12,31 @@
       /* The app is a full-screen cockpit, not a scrollable page: never let trackpad/touch gestures
          scroll-chain or bounce the whole frame (the per-panel scrollers handle their own overflow). */
       html, body { overscroll-behavior: none; }
+
+      /* ============================================================
+         MaxGCS theme — dark/charcoal + red accent console palette.
+         Scoped to the new dashboard shell + the shared panel/ primitives
+         (see docs/user/for-developers/ui-framework.md); the rest of the
+         app's floating panels still use their original hardcoded colors
+         until a follow-up pass repoints them to these variables too.
+         ============================================================ */
+      :root {
+        --mx-bg: #17181a;
+        --mx-bg-alt: #1c1e21;
+        --mx-panel: #202225;
+        --mx-panel-2: #2a2c30;
+        --mx-border: #34363a;
+        --mx-border-strong: #46484e;
+        --mx-text: #e6e7e9;
+        --mx-text-muted: #8a8d93;
+        --mx-red: #e0302c;
+        --mx-red-bright: #ff4d47;
+        --mx-red-dim: rgba(224, 48, 44, 0.35);
+        --mx-green: #59aa29;
+        --mx-amber: #f5a623;
+      }
     </style>
-    <title>Tauri + SvelteKit + Typescript App</title>
+    <title>MaxGCS</title>
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">

@@ -88,6 +88,6 @@
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.7);
   }
 
-  .leg-primary { background: #37a8db; }
+  .leg-primary { background: var(--mx-red, #e0302c); }
   .leg-secondary { background: #f39c12; opacity: 0.65; }
 </style>

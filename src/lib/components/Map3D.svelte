@@ -2073,8 +2073,8 @@
   const GCS_BILLBOARD_IMG = (() => {
     const svg =
       '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">' +
-      '<circle cx="20" cy="20" r="15" fill="rgba(40,42,44,0.72)" stroke="#37a8db" stroke-width="2.5"/>' +
-      '<g transform="translate(8,8)" fill="none" stroke="#37a8db" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' +
+      '<circle cx="20" cy="20" r="15" fill="rgba(40,42,44,0.72)" stroke="#e0302c" stroke-width="2.5"/>' +
+      '<g transform="translate(8,8)" fill="none" stroke="#e0302c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' +
       '<path d="M4 10a7.31 7.31 0 0 0 10 10Z"/><path d="m9 15 3-3"/>' +
       '<path d="M17 13a6 6 0 0 0-6-6"/><path d="M21 13A10 10 0 0 0 11 3"/></g></svg>';
     return "data:image/svg+xml;base64," + btoa(svg);
@@ -4471,7 +4471,7 @@
     width: 200px;
     padding: 8px 10px;
     background: rgba(46, 46, 46, 0.9);
-    border: 1px solid rgba(55, 168, 219, 0.5);
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.5));
     border-radius: 6px;
     backdrop-filter: blur(8px);
     pointer-events: all;
@@ -4490,14 +4490,14 @@
   }
   .dev-time-clock {
     margin-left: auto;
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
     font-variant-numeric: tabular-nums;
     font-weight: 700;
     font-size: 13px;
   }
   .dev-time-slider {
     width: 100%;
-    accent-color: #37a8db;
+    accent-color: var(--mx-red, #e0302c);
     cursor: pointer;
   }
   .dev-time-slider:disabled {
@@ -4522,9 +4522,9 @@
     width: 38px;
     height: 38px;
     background: rgba(46, 46, 46, 0.9);
-    border: 2px solid rgba(55, 168, 219, 0.5);
+    border: 2px solid var(--mx-red-dim, rgba(224, 48, 44, 0.5));
     border-radius: 6px;
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -4535,8 +4535,8 @@
   }
 
   .map-control-btn:hover {
-    background: rgba(55, 168, 219, 0.25);
-    border-color: #37a8db;
+    background: rgba(224, 48, 44, 0.25);
+    border-color: var(--mx-red, #e0302c);
   }
 
   .map-zoom-btn {
@@ -4554,15 +4554,15 @@
   /* Free = dimmed, no active lock */
   .map-cam-btn.mode-free {
     background: rgba(46, 46, 46, 0.45);
-    border-color: rgba(55, 168, 219, 0.45);
-    color: rgba(199, 223, 232, 0.95);
+    border-color: rgba(224, 48, 44, 0.45);
+    color: rgba(232, 199, 199, 0.95);
   }
 
-  /* Follow = full blue (smooth chase) */
+  /* Follow = full red (smooth chase) */
   .map-cam-btn.mode-follow {
     background: rgba(46, 46, 46, 0.92);
-    border-color: rgba(55, 168, 219, 0.7);
-    color: #37a8db;
+    border-color: var(--mx-red-dim, rgba(224, 48, 44, 0.7));
+    color: var(--mx-red, #e0302c);
   }
 
   /* Orbit = cyan/teal tint */
@@ -4580,9 +4580,9 @@
   }
 
   .map-cam-btn:hover {
-    background: rgba(55, 168, 219, 0.25) !important;
-    border-color: #37a8db !important;
-    color: #37a8db !important;
+    background: rgba(224, 48, 44, 0.25) !important;
+    border-color: var(--mx-red, #e0302c) !important;
+    color: var(--mx-red, #e0302c) !important;
   }
 
   .cam-icon { overflow: visible; }

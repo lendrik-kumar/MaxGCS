@@ -1,6 +1,6 @@
 {
   "app": {
-    "brand": "KiteGC",
+    "brand": "MaxGCS",
     "version": "v{version}"
   },
   "window": {
@@ -156,6 +156,7 @@
     "video": "Video",
     "control": "Control",
     "rc": "RC",
+    "recordings": "Recordings",
     "closePanel": "Close panel",
     "openPanel": "Open panel"
   },
@@ -391,7 +392,7 @@
   },
   "update": {
     "title": "Update available",
-    "body": "A new version of Kite Ground Control is available.",
+    "body": "A new version of MaxGCS is available.",
     "latest": "Latest:",
     "current": "You have:",
     "prerelease": "pre-release",
@@ -596,8 +597,8 @@
     "alertCpaLookAhead": "CPA look-ahead",
     "ffModule": "ESP32 module (serial)",
     "ffNodeName": "Node name",
-    "ffNodeNamePlaceholder": "KITE-GCS",
-    "ffHint": "Kite emulates an INAV FC at your GCS location so the module shares it and relays peers.",
+    "ffNodeNamePlaceholder": "MaxGCS",
+    "ffHint": "MaxGCS emulates an INAV FC at your GCS location so the module shares it and relays peers.",
     "linkQuality": "Link quality (0–4)",
     "acType": {
       "light": "Light aircraft",
@@ -680,7 +681,20 @@
     "mjpegLoadFailed": "Video stream could not be displayed — the source stopped or this system cannot render it.",
     "ffmpegNativeMissing": "ffmpeg is required for native capture — it reads the device hardware directly (V4L2 / DirectShow / AVFoundation).",
     "disableHwAccel": "Disable hardware acceleration",
-    "disableHwAccelHint": "Forces the software video transcode. Only needed if the picture is broken or unstable with hardware acceleration."
+    "disableHwAccelHint": "Forces the software video transcode. Only needed if the picture is broken or unstable with hardware acceleration.",
+    "record": "Record (enhanced)",
+    "recordHint": "Native capture only. Saves a denoised, sharpened, colour-corrected copy to disk — the live view is unaffected. Starting/stopping briefly restarts the feed.",
+    "recordingTo": "Recording to {path}",
+    "genericDeviceLabel": "Secure Comm {n}"
+  },
+  "recordings": {
+    "title": "Recordings",
+    "empty": "No recordings yet. Turn on Record (enhanced) in the Video panel — native capture only — to save one.",
+    "refresh": "Refresh",
+    "name": "Name",
+    "size": "Size",
+    "date": "Date",
+    "folderHint": "Saved to {path}"
   },
   "terrain": {
     "title": "Terrain Analysis",
@@ -763,6 +777,16 @@
     "notConnected": "Not connected"
   },
   "settings": {
+    "securityTitle": "Security",
+    "securityHint": "Protects this Settings panel with a password. Other panels (Mission, Control, RC, etc.) are never affected.",
+    "changePassword": "Change Password",
+    "currentPasswordPlaceholder": "Current password",
+    "newPasswordPlaceholder": "New password",
+    "confirmNewPasswordPlaceholder": "Confirm new password",
+    "changePasswordButton": "Update Password",
+    "lockNowButton": "Lock Settings Now",
+    "currentPasswordWrong": "Current password is incorrect.",
+    "passwordChanged": "Password updated.",
     "map": "Map",
     "tileProvider": "Tile Provider",
     "tileCache": "Tile Cache",
@@ -815,7 +839,7 @@
     "directionLines": "Direction indicators",
     "directionLinesHint": "Heading, course-over-ground and predicted-turn lines at the aircraft on the map",
     "mavlinkFullTelemetry": "Full MAVLink Telemetry",
-    "mavlinkFullTelemetryHint": "MAVLink only: stream everything the FC sends at its own configured rates (ignores the Attitude/GPS rate settings). For high-bandwidth links and capturing all data in the .tlog. Default off — Kite requests a reduced rate set that fits slow RC links.",
+    "mavlinkFullTelemetryHint": "MAVLink only: stream everything the FC sends at its own configured rates (ignores the Attitude/GPS rate settings). For high-bandwidth links and capturing all data in the .tlog. Default off — MaxGCS requests a reduced rate set that fits slow RC links.",
     "flightLogging": "Flight Logbook",
     "enableFlightLogging": "Enable Flight Logbook",
     "enableFlightRecording": "Enable Flight Recording",
@@ -999,7 +1023,7 @@
     "decoderMissingMsg": "INAV Blackbox logs need the external 'blackbox_decode' tool, which isn't installed. Download it automatically from the official iNavFlight releases?",
     "decoderDownload": "Download",
     "decoderDownloadFailed": "Could not download blackbox_decode: {error}",
-    "kflightFileFilter": "KiteGC Flight Files",
+    "kflightFileFilter": "MaxGCS Flight Files",
     "exportTitle": "Export Complete",
     "exportSuccess": "{count} flight(s) exported successfully.",
     "importKflightTitle": "Import Complete",
@@ -1015,6 +1039,19 @@
   },
   "dialog": {
     "cancel": "Cancel"
+  },
+  "security": {
+    "setupTitle": "Set a Password",
+    "setupMessage": "Set a password to protect the Settings panel. Everything else — mission planning, flying, RC control, video — stays open to everyone; only Settings will be locked.",
+    "unlockTitle": "Settings Locked",
+    "unlockMessage": "Enter the password to open Settings.",
+    "passwordPlaceholder": "Password",
+    "confirmPlaceholder": "Confirm password",
+    "setButton": "Set Password",
+    "unlockButton": "Unlock",
+    "mismatchError": "Passwords don't match.",
+    "emptyError": "Enter a password.",
+    "wrongPasswordError": "Incorrect password."
   },
   "player": {
     "close": "Close player",
@@ -1067,7 +1104,8 @@
     "right": "Right",
     "off": "Off",
     "editLayout": "Edit widget layout",
-    "exitEdit": "Exit edit mode"
+    "exitEdit": "Exit edit mode",
+    "resizeDock": "Drag to resize"
   },
   "widgetLabels": {
     "spd": "SPD",

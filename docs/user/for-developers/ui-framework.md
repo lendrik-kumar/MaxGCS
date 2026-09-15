@@ -80,19 +80,22 @@ For destructive or arming actions, use the deliberate-gesture controls instead o
 
 ## Design theme
 
-Kite follows the **INAV Configurator dark theme**. The root element is `color-scheme: dark`; the palette:
+MaxGCS follows a dark/charcoal theme with a red brand accent. The root element is `color-scheme: dark`; the palette:
 
 | Token | Hex | Role |
 |---|---|---|
-| Accent | `#37a8db` | primary accent / focus / links |
-| Body | `#3d3f3e` | app background |
-| Panels | `#2e2e2e` | panel / surface background |
-| Borders | `#272727` | borders / dividers |
-| Muted | `#949494` | secondary text |
-| Success | `#59aa29` | ok / active |
+| Brand accent | `#e0302c` (`--mx-red`) | MaxGCS brand red — active nav state, shared control primitives (Button/Toggle/etc.), critical alerts, errors |
+| Functional accent | `#37a8db` | blue — reserved for map controls (zoom/3D/orientation), telemetry widget labels (HOME/SPD/ALT/GPS/LINK/BAT/MODE) and other informational indicators. Not a general-purpose accent. |
+| Body | `#17181a` (`--mx-bg`) | app background |
+| Panels | `#202225` (`--mx-panel`) | panel / surface background |
+| Borders | `#34363a` (`--mx-border`) | borders / dividers |
+| Muted | `#8a8d93` (`--mx-text-muted`) | secondary text |
+| Success | `#59aa29` | ok / active / healthy |
 | Error | `#d40000` | error / danger |
 
-Plus the warm accent `#f5a623` (orange) used for warnings/highlights and in the brand mark.
+Plus the warm accent `#f5a623` (orange) used for warnings/highlights.
+
+The two accents are deliberately kept separate: red means *MaxGCS brand / active-state / alert*, blue means *this control belongs to the map or reports live telemetry*. Don't blur the two — a shared control primitive (Button, Toggle, SegmentedToggle, PanelShell, NumberStepper, HoldToConfirm, ArmSlider) uses the red brand accent; a map-control button or a telemetry widget's label stays blue.
 
 - **Font:** `'Segoe UI', Tahoma, sans-serif`.
 - **Sizing:** widget content is sized in **`vmin`** (no fixed px) so it scales with the window; the whole

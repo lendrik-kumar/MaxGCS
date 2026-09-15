@@ -46,6 +46,7 @@
     setNativeResolution,
     setNativeFramerate,
     setNativeCodec,
+    setNativeRecording,
   } from '$lib/stores/video';
   import { canvasSink, mjpegSink, mjpegStats } from '$lib/controllers/mjpegSink';
   import {
@@ -485,8 +486,12 @@
           value={$videoState.nativeDevice ?? ''}
           onchange={(e) => setNativeDevice((e.currentTarget as HTMLSelectElement).value || null)}
         >
-          {#each $videoState.nativeDevices as d}
-            <option value={d.id}>{d.name}</option>
+          {#each $videoState.nativeDevices as d, i}
+            <!-- Shown label is a generic index, not the real hardware name (`d.name`) — cosmetic
+                 only, so the actual capture-card model isn't visible on screen/in recordings.
+                 Selection still uses the real `d.id`, and internal device re-matching after a
+                 replug still keys off the real `d.name` in the store (see resolveNativeDevice). -->
+            <option value={d.id}>{$t('video.genericDeviceLabel', { values: { n: i + 1 } })}</option>
           {/each}
         </select>
       </label>
@@ -532,6 +537,19 @@
             {/each}
           </select>
         </label>
+
+        <div class="field-row">
+          <Toggle
+            checked={$videoState.recording}
+            onchange={(c) => void setNativeRecording(c)}
+            id="vp-record"
+          />
+          <span class="label">{$t('video.record')}</span>
+        </div>
+        <p class="hint">{$t('video.recordHint')}</p>
+        {#if $videoState.recording && $videoState.recordingPath}
+          <p class="hint">{$t('video.recordingTo', { values: { path: $videoState.recordingPath } })}</p>
+        {/if}
       {/if}
 
       <!-- Native capture needs ffmpeg (no go2rtc). -->
@@ -818,7 +836,7 @@
     height: 28px;
     min-width: 30px;
     padding: 0 6px;
-    background: #37a8db;
+    background: var(--mx-red, #e0302c);
     color: #fff;
     border: none;
     border-radius: 4px;
@@ -837,7 +855,7 @@
     border-radius: 4px;
     padding: 3px 4px 3px 6px;
   }
-  .rtsp-item.active { border-color: rgba(55, 168, 219, 0.75); }
+  .rtsp-item.active { border-color: var(--mx-red-dim, rgba(224, 48, 44, 0.75)); }
   .rtsp-item-main {
     flex: 1;
     min-width: 0;
@@ -853,7 +871,7 @@
     padding: 3px 2px;
     font-size: 12px;
   }
-  .rtsp-item-main:hover .rtsp-item-name { color: #37a8db; }
+  .rtsp-item-main:hover .rtsp-item-name { color: var(--mx-red, #e0302c); }
   .rtsp-item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .rtsp-item-transport { flex: 0 0 auto; font-size: 10px; color: #949494; letter-spacing: 0.04em; }
   .rtsp-item-btn {
@@ -899,7 +917,7 @@
     border-radius: 3px;
     overflow: hidden;
   }
-  .dl-fill { height: 100%; background: #37a8db; transition: width 0.2s ease; }
+  .dl-fill { height: 100%; background: var(--mx-red, #e0302c); transition: width 0.2s ease; }
   .dl-pct { font-size: 11px; color: #9ad0e8; font-variant-numeric: tabular-nums; min-width: 30px; text-align: right; }
 
   .vp-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }

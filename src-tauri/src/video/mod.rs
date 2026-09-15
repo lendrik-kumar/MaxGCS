@@ -15,6 +15,7 @@ pub mod native;
 #[cfg(target_os = "linux")]
 pub mod v4l2;
 pub mod mjpeg_server;
+pub mod recording;
 
 pub use go2rtc::Go2Rtc;
 pub use mjpeg_server::MjpegServer;

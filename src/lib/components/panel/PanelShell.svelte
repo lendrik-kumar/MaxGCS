@@ -117,14 +117,14 @@
   .ps {
     position: absolute;
     top: 65px;
-    left: 62px;
+    right: 62px;
     z-index: 150;
     display: flex;
     overflow: hidden;
     color: #e0e0e0;
     font-size: 13px;
     background: rgba(46, 46, 46, 0.92);
-    border: 1px solid rgba(55, 168, 219, 0.35);
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.35));
     border-radius: 8px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(12px);
@@ -168,17 +168,18 @@
   }
 
   /* Fullscreen + Wide-Compact: floating overlays (terrain-analyzer style), NOT edge-to-edge.
-     All variants are left-anchored and sized by width/height (no `right`) so any variant can
-     animate into any other. Fullscreen = even ~62px inset all round; Wide-Compact = a short
-     top strip that stops before the side widget dock so the map stays visible for comparison. */
+     All variants are right-anchored (next to the nav rail) and sized by width/height so any
+     variant can animate into any other. Fullscreen = even ~62px inset all round; Wide-Compact
+     = a short top strip that stops before the side widget dock so the map stays visible for
+     comparison. */
   .ps-fullscreen,
   .ps-wide-compact {
     top: 62px;
-    left: 62px;
+    right: 62px;
     z-index: 160;
     flex-direction: column;
     border-radius: 10px;
-    border: 1px solid rgba(55, 168, 219, 0.4);
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.4));
     background: rgba(40, 40, 40, 0.96);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
     backdrop-filter: blur(14px);
@@ -235,7 +236,7 @@
     flex: 1;
     font-weight: 600;
     font-size: 13px;
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

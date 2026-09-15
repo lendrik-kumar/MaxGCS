@@ -99,7 +99,7 @@
   .weather-editor {
     margin-top: 8px;
     padding: 10px;
-    border: 1px solid rgba(55, 168, 219, 0.25);
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.25));
     border-radius: 6px;
     background: rgba(255, 255, 255, 0.03);
   }

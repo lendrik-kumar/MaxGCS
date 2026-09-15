@@ -1,6 +1,6 @@
 {
   "app": {
-    "brand": "KiteGC",
+    "brand": "MaxGCS",
     "version": "v{version}"
   },
   "statusBox": {
@@ -145,6 +145,7 @@
     "video": "Vidéo",
     "control": "Pilotage",
     "rc": "RC",
+    "recordings": "Enregistrements",
     "closePanel": "Fermer le panneau",
     "openPanel": "Ouvrir le panneau"
   },
@@ -380,7 +381,7 @@
   },
   "update": {
     "title": "Mise à jour disponible",
-    "body": "Une nouvelle version de Kite Ground Control est disponible.",
+    "body": "Une nouvelle version de MaxGCS est disponible.",
     "latest": "Dernière :",
     "current": "Installée :",
     "prerelease": "pré-version",
@@ -585,8 +586,8 @@
     "alertCpaLookAhead": "Anticipation CPA",
     "ffModule": "Module ESP32 (série)",
     "ffNodeName": "Nom du nœud",
-    "ffNodeNamePlaceholder": "KITE-GCS",
-    "ffHint": "Kite émule un FC INAV à la position de la GCS pour que le module la partage et relaie les pairs.",
+    "ffNodeNamePlaceholder": "MaxGCS",
+    "ffHint": "MaxGCS émule un FC INAV à la position de la GCS pour que le module la partage et relaie les pairs.",
     "linkQuality": "Qualité du lien (0–4)",
     "acType": {
       "light": "Avion léger",
@@ -658,7 +659,20 @@
       "copy": "Copie"
     },
     "disableHwAccel": "Désactiver l'accélération matérielle",
-    "disableHwAccelHint": "Force le transcodage logiciel. Utile uniquement si l'image est défectueuse ou instable avec l'accélération matérielle."
+    "disableHwAccelHint": "Force le transcodage logiciel. Utile uniquement si l'image est défectueuse ou instable avec l'accélération matérielle.",
+    "record": "Enregistrer (amélioré)",
+    "recordHint": "Capture native uniquement. Enregistre sur le disque une copie débruitée, renforcée et corrigée en couleur — l'affichage en direct n'est pas affecté. Le démarrage/l'arrêt redémarre brièvement le flux.",
+    "recordingTo": "Enregistrement vers {path}",
+    "genericDeviceLabel": "Comm sécurisée {n}"
+  },
+  "recordings": {
+    "title": "Enregistrements",
+    "empty": "Aucun enregistrement pour l'instant. Activez « Enregistrer (amélioré) » dans le panneau Vidéo — capture native uniquement — pour en créer un.",
+    "refresh": "Actualiser",
+    "name": "Nom",
+    "size": "Taille",
+    "date": "Date",
+    "folderHint": "Enregistré dans {path}"
   },
   "terrain": {
     "title": "Analyse du terrain",
@@ -725,6 +739,16 @@
     "notConnected": "Non connecté"
   },
   "settings": {
+    "securityTitle": "Sécurité",
+    "securityHint": "Protège ce panneau Paramètres par un mot de passe. Les autres panneaux (Mission, Contrôle, RC, etc.) ne sont jamais concernés.",
+    "changePassword": "Changer le mot de passe",
+    "currentPasswordPlaceholder": "Mot de passe actuel",
+    "newPasswordPlaceholder": "Nouveau mot de passe",
+    "confirmNewPasswordPlaceholder": "Confirmer le nouveau mot de passe",
+    "changePasswordButton": "Mettre à jour le mot de passe",
+    "lockNowButton": "Verrouiller les paramètres maintenant",
+    "currentPasswordWrong": "Le mot de passe actuel est incorrect.",
+    "passwordChanged": "Mot de passe mis à jour.",
     "map": "Carte",
     "tileProvider": "Fournisseur de tuiles",
     "tileCache": "Cache de tuiles",
@@ -944,7 +968,7 @@
     "decoderMissingMsg": "Les journaux Blackbox INAV nécessitent l'outil externe « blackbox_decode », qui n'est pas installé. Le télécharger automatiquement depuis les releases officielles iNavFlight ?",
     "decoderDownload": "Télécharger",
     "decoderDownloadFailed": "Impossible de télécharger blackbox_decode : {error}",
-    "kflightFileFilter": "Fichiers de vol KiteGC",
+    "kflightFileFilter": "Fichiers de vol MaxGCS",
     "exportTitle": "Export terminé",
     "exportSuccess": "{count} vol(s) exporté(s) avec succès.",
     "importKflightTitle": "Import terminé",
@@ -960,6 +984,19 @@
   },
   "dialog": {
     "cancel": "Annuler"
+  },
+  "security": {
+    "setupTitle": "Définir un mot de passe",
+    "setupMessage": "Définissez un mot de passe pour protéger le panneau Paramètres. Tout le reste — planification de mission, vol, contrôle RC, vidéo — reste accessible à tous ; seuls les Paramètres seront verrouillés.",
+    "unlockTitle": "Paramètres verrouillés",
+    "unlockMessage": "Entrez le mot de passe pour ouvrir les Paramètres.",
+    "passwordPlaceholder": "Mot de passe",
+    "confirmPlaceholder": "Confirmer le mot de passe",
+    "setButton": "Définir le mot de passe",
+    "unlockButton": "Déverrouiller",
+    "mismatchError": "Les mots de passe ne correspondent pas.",
+    "emptyError": "Entrez un mot de passe.",
+    "wrongPasswordError": "Mot de passe incorrect."
   },
   "player": {
     "close": "Fermer le lecteur",
@@ -1012,7 +1049,8 @@
     "right": "Droite",
     "off": "Off",
     "editLayout": "Modifier la disposition des widgets",
-    "exitEdit": "Quitter le mode édition"
+    "exitEdit": "Quitter le mode édition",
+    "resizeDock": "Glisser pour redimensionner"
   },
   "widgetLabels": {
     "spd": "SPD",

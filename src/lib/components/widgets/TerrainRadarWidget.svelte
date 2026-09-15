@@ -358,9 +358,9 @@
   .widget-card {
     position: relative;
     box-sizing: border-box;
-    background: rgba(30, 30, 30, 0.75);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(20, 8, 8, 0.18);
+    backdrop-filter: blur(6px);
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.35));
     border-radius: 8px;
     overflow: hidden;
   }
@@ -387,7 +387,7 @@
     font-variant-numeric: tabular-nums;
   }
   .uav-ring {
-    fill: rgba(55, 168, 219, 0.25);
+    fill: var(--mx-red-dim, rgba(224, 48, 44, 0.25));
     stroke: #ffffff;
     stroke-width: 2;
   }
@@ -403,9 +403,9 @@
     font-size: 18px;
     font-weight: 700;
     letter-spacing: 0.05em;
-    color: #37a8db;
+    color: var(--mx-red, #e0302c);
     background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(55, 168, 219, 0.4);
+    border: 1px solid var(--mx-red-dim, rgba(224, 48, 44, 0.4));
     border-radius: 6px;
     cursor: pointer;
   }
@@ -416,7 +416,7 @@
     right: 4px;
   }
   .mode:hover {
-    background: rgba(55, 168, 219, 0.18);
+    background: rgba(224, 48, 44, 0.18);
   }
   .placeholder {
     position: absolute;
