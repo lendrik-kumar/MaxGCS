@@ -1535,6 +1535,9 @@
           { name: 'KML (Google Earth)', extensions: ['kml'] },
           { name: 'GPX (GPS Exchange)', extensions: ['gpx'] },
           { name: 'CSV (Spreadsheet)', extensions: ['csv'] },
+          { name: 'TXT (Readable log + timeline)', extensions: ['txt', 'log'] },
+          { name: 'Markdown (Readable report)', extensions: ['md'] },
+          { name: 'JSON (Structured log + timeline)', extensions: ['json'] },
         ],
         defaultPath: `${defaultName}.kmz`,
       });

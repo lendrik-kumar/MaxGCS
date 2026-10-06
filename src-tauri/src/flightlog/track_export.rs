@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Marc Hoffmann (b14ckyy)
 
-// Track export — KMZ, KML, GPX, CSV export for flight tracks
+// Track export — KMZ, KML, GPX, CSV geometry export for flight tracks.
+// Readable TXT / Markdown / JSON logs live in text_export.rs and are dispatched from here.
 
 use std::io::Write;
 use std::path::Path;
@@ -13,7 +14,7 @@ use super::types::{Flight, TelemetryRecord};
 /// Get the best altitude for a record.
 /// Preference: nav_alt_m (INAV fused, relative to home) → baro_alt_m (relative to home).
 /// Returns altitude relative to home/launch point.
-fn best_alt_relative(r: &TelemetryRecord) -> f64 {
+pub(super) fn best_alt_relative(r: &TelemetryRecord) -> f64 {
     r.nav_alt_m.unwrap_or_else(|| r.baro_alt_m.unwrap_or(0.0))
 }
 
@@ -153,7 +154,7 @@ fn remove_spikes<'a>(track: &[&'a TelemetryRecord]) -> Vec<&'a TelemetryRecord> 
 }
 
 /// Simple haversine distance in meters.
-fn haversine_m(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
+pub(super) fn haversine_m(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
     let r = 6_371_000.0;
     let dlat = (lat2 - lat1).to_radians();
     let dlon = (lon2 - lon1).to_radians();
@@ -163,11 +164,31 @@ fn haversine_m(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
 }
 
 /// Export a flight track to the given path. Format is detected from the file extension.
+///
+/// Two families of output, with deliberately different treatment of the samples:
+///   - Geometry (KMZ/KML/GPX/CSV) — GPS-filtered, de-spiked and simplified, because a mapping
+///     tool wants a clean path and a flight with no fix has no path to draw.
+///   - Readable logs (TXT/MD/JSON, see `text_export`) — every sample exactly as recorded, since
+///     these document the flight rather than its shape, and must work for a GPS-less flight.
 pub fn export_track(
     flight: &Flight,
     track: &[TelemetryRecord],
     output_path: &Path,
 ) -> Result<(), String> {
+    let ext = output_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+
+    // Readable logs run on the unfiltered samples — dispatch before any of the geometry cleanup.
+    match ext.as_str() {
+        "txt" | "log" => return super::text_export::export_txt(flight, track, output_path),
+        "md" => return super::text_export::export_md(flight, track, output_path),
+        "json" => return super::text_export::export_json(flight, track, output_path),
+        _ => {}
+    }
+
     let valid_track = filter_valid_gps(track);
     if valid_track.is_empty() {
         return Err("No valid GPS data in this flight.".to_string());
@@ -179,12 +200,6 @@ pub fn export_track(
     // Douglas-Peucker simplification: epsilon in meters.
     // 0.5 m reduces jitter from GPS noise while preserving real maneuvers.
     let simplified = simplify_track_dp(&clean_track, 0.5);
-
-    let ext = output_path
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("")
-        .to_lowercase();
 
     match ext.as_str() {
         "kmz" => export_kmz(flight, &simplified, output_path),
