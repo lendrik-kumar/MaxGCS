@@ -694,7 +694,12 @@
     "name": "Name",
     "size": "Größe",
     "date": "Datum",
-    "folderHint": "Gespeichert unter {path}"
+    "folderHint": "Gespeichert unter {path}",
+    "export": "Exportieren",
+    "exportAs": "Exportieren als",
+    "presetOriginal": "Original",
+    "presetCleaned": "Bereinigt",
+    "presetUpscale": "Bereinigt + 2×"
   },
   "terrain": {
     "title": "Geländeanalyse",

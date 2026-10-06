@@ -73,6 +73,7 @@ use commands::video::{
     video_list_native_devices, video_probe_device,
     video_native_mjpeg_start, video_native_mjpeg_stop, video_rtsp_mjpeg_start,
     video_list_recordings, video_recordings_dir,
+    video_export_recording, video_export_cancel, video_export_suggested_name,
 };
 use video::{Go2Rtc, MjpegServer};
 use commands::logging::{set_log_level, get_log_path, log_session_settings, log_frontend};
@@ -632,6 +633,9 @@ pub fn run() {
             video_native_mjpeg_stop,
             video_list_recordings,
             video_recordings_dir,
+            video_export_recording,
+            video_export_cancel,
+            video_export_suggested_name,
             radar_configure,
             radar_set_center,
             radar_set_node_pos,

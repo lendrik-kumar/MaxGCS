@@ -343,6 +343,49 @@ pub fn video_list_recordings() -> Result<Vec<crate::video::recording::RecordingI
     crate::video::recording::list()
 }
 
+/// Export a saved recording to a shareable `.mp4`, optionally running a stronger filter pass than
+/// the live encode could afford. Emits `video-export-progress` (`{ pct, msg }`).
+///
+/// The source recording is never modified or deleted, whatever the outcome.
+#[tauri::command]
+pub async fn video_export_recording(
+    app_handle: AppHandle,
+    source_path: String,
+    output_path: String,
+    preset: crate::video::export::ExportPreset,
+) -> Result<(), String> {
+    let report = move |pct: u8, msg: &str| {
+        let _ = app_handle.emit(
+            "video-export-progress",
+            serde_json::json!({ "pct": pct, "msg": msg }),
+        );
+    };
+    // ffmpeg here is a blocking child process that can run for minutes; keep it off the async
+    // runtime's worker threads.
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::video::export::run(
+            std::path::Path::new(&source_path),
+            std::path::Path::new(&output_path),
+            preset,
+            report,
+        )
+    })
+    .await
+    .map_err(|e| format!("Export task failed: {e}"))?
+}
+
+/// Cancel a running export. Returns false when nothing was running.
+#[tauri::command]
+pub fn video_export_cancel() -> bool {
+    crate::video::export::cancel()
+}
+
+/// Default filename to offer in the save dialog for a given recording and preset.
+#[tauri::command]
+pub fn video_export_suggested_name(source_path: String, preset: crate::video::export::ExportPreset) -> String {
+    crate::video::export::suggested_name(std::path::Path::new(&source_path), preset)
+}
+
 /// Where recordings are saved (`Documents/KiteGC/Recordings`) — shown as a hint in the Recordings
 /// panel. Does not create the folder (unlike `new_recording_path`); it may not exist yet.
 #[tauri::command(async)]

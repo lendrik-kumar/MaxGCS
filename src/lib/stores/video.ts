@@ -1362,6 +1362,44 @@ export const recordingsLoading = writable(false);
 /** `Documents/KiteGC/Recordings` (platform-appropriate) — shown as a hint in the panel; fetched once. */
 export const recordingsDir = writable<string>('');
 
+/** Export presets, mirroring `video::export::ExportPreset`. */
+export type ExportPreset = 'original' | 'cleaned' | 'upscale';
+
+/** Progress of a running export, or null when none is running. */
+export const exportProgress = writable<{ pct: number; msg: string } | null>(null);
+
+/**
+ * Export one recording to `outputPath`. Resolves when ffmpeg is done; the source recording is
+ * never modified. Progress arrives on the `video-export-progress` event for the duration.
+ */
+export async function exportRecording(
+  sourcePath: string,
+  outputPath: string,
+  preset: ExportPreset,
+): Promise<void> {
+  exportProgress.set({ pct: 0, msg: '' });
+  const unlisten = await listen<{ pct: number; msg: string }>(
+    'video-export-progress',
+    (e) => exportProgress.set(e.payload),
+  );
+  try {
+    await invoke<void>('video_export_recording', { sourcePath, outputPath, preset });
+  } finally {
+    unlisten();
+    exportProgress.set(null);
+  }
+}
+
+/** Cancel a running export. Returns false when nothing was running. */
+export async function cancelExport(): Promise<boolean> {
+  return invoke<boolean>('video_export_cancel');
+}
+
+/** Filename the backend suggests for this recording + preset, for the save dialog's default. */
+export async function exportSuggestedName(sourcePath: string, preset: ExportPreset): Promise<string> {
+  return invoke<string>('video_export_suggested_name', { sourcePath, preset });
+}
+
 export async function refreshRecordings(): Promise<void> {
   recordingsLoading.set(true);
   try {

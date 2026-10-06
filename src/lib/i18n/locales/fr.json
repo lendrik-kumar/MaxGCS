@@ -672,7 +672,12 @@
     "name": "Nom",
     "size": "Taille",
     "date": "Date",
-    "folderHint": "Enregistré dans {path}"
+    "folderHint": "Enregistré dans {path}",
+    "export": "Exporter",
+    "exportAs": "Exporter en",
+    "presetOriginal": "Original",
+    "presetCleaned": "Nettoyé",
+    "presetUpscale": "Nettoyé + 2×"
   },
   "terrain": {
     "title": "Analyse du terrain",

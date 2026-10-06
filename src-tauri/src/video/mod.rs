@@ -8,6 +8,7 @@
 //! Linux V4L2 capture devices (HDMI dongles, etc.) that aren't exposed via getUserMedia are
 //! enumerated and ingested through the same go2rtc/ffmpeg pipeline.
 
+pub mod export;
 pub mod ffmpeg;
 pub mod go2rtc;
 pub mod native;
