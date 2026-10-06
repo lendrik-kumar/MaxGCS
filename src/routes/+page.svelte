@@ -25,6 +25,7 @@
   import CesiumKeyPrompt from "$lib/components/CesiumKeyPrompt.svelte";
   import LogPlayer from "$lib/components/logbook/LogPlayer.svelte";
   import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
+  import ExportFormatDialog from "$lib/components/logbook/ExportFormatDialog.svelte";
   import SettingsAuthGate from "$lib/components/SettingsAuthGate.svelte";
   import UpdateDialog from "$lib/components/UpdateDialog.svelte";
   import { runUpdateCheck } from "$lib/controllers/updateCheck";
@@ -621,6 +622,7 @@
 
   // Shared in-app dialog (replaces all native confirm/alert calls)
   let confirmDialog: ReturnType<typeof ConfirmDialog>;
+  let exportFormatDialog: ReturnType<typeof ExportFormatDialog>;
   let authGate: ReturnType<typeof SettingsAuthGate>;
   let endFlightDialog: ReturnType<typeof EndFlightDialog>;
   let recoveryPrompt: ReturnType<typeof RecoveryPrompt>;
@@ -1529,17 +1531,14 @@
       const craft = selectedFlight.craft_name || 'flight';
       const date = selectedFlight.start_time ? new Date(selectedFlight.start_time).toISOString().slice(0, 10) : '';
       const defaultName = `${craft}_${date}`.replace(/\s+/g, '_');
+      // Format is chosen in-app rather than through the native dialog's filter dropdown: the
+      // backend dispatches on the file extension, and on some platforms that dropdown does not
+      // rewrite the typed filename — so the user could pick "TXT" and still get a .kmz.
+      const format = await exportFormatDialog.show();
+      if (!format) return;
       const outputPath = await save({
-        filters: [
-          { name: 'KMZ (Google Earth)', extensions: ['kmz'] },
-          { name: 'KML (Google Earth)', extensions: ['kml'] },
-          { name: 'GPX (GPS Exchange)', extensions: ['gpx'] },
-          { name: 'CSV (Spreadsheet)', extensions: ['csv'] },
-          { name: 'TXT (Readable log + timeline)', extensions: ['txt', 'log'] },
-          { name: 'Markdown (Readable report)', extensions: ['md'] },
-          { name: 'JSON (Structured log + timeline)', extensions: ['json'] },
-        ],
-        defaultPath: `${defaultName}.kmz`,
+        filters: [{ name: format.label, extensions: [format.ext] }],
+        defaultPath: `${defaultName}.${format.ext}`,
       });
       if (!outputPath) return;
       await logbookCtrl.exportTrack(selectedFlightId, outputPath, flightLogDbPath);
@@ -2620,6 +2619,7 @@
   <div class="ui-scale">
 
 <ConfirmDialog bind:this={confirmDialog} />
+<ExportFormatDialog bind:this={exportFormatDialog} />
 <SettingsAuthGate bind:this={authGate} />
 <UpdateDialog />
 <CesiumKeyPrompt bind:open={cesiumKeyPromptOpen} onSave={cesiumKeySave} onRemindLater={cesiumKeyRemindLater} onIgnore={cesiumKeyIgnore} />
