@@ -38,7 +38,9 @@
     toggleFloating,
     setFloatHeightFrac,
     FLOAT_SIZE_PRESETS,
-    nearestFloatSize,
+    FLOAT_HEIGHT_MIN,
+    FLOAT_HEIGHT_MAX,
+    activeFloatSize,
     enterPiP,
     pipSupported,
     type VideoResolution,
@@ -61,7 +63,6 @@
   } from '$lib/helpers/videoCapabilities';
   import PanelShell from '$lib/components/panel/PanelShell.svelte';
   import Button from '$lib/components/panel/Button.svelte';
-  import SegmentedToggle from '$lib/components/panel/SegmentedToggle.svelte';
   import Toggle from '$lib/components/panel/Toggle.svelte';
   import { isLinux } from '$lib/platform';
   import VideoReconnectOverlay from '$lib/components/video/VideoReconnectOverlay.svelte';
@@ -178,9 +179,8 @@
   // Native capture is available on every OS (Linux V4L2 / Windows DirectShow / macOS AVFoundation).
   const KINDS: VideoKind[] = ['camera', 'rtsp', 'native'];
 
-  const floatSizeOptions = $derived(
-    FLOAT_SIZE_PRESETS.map((o) => ({ value: o.key, label: $t(`video.floatSize_${o.key}`) })),
-  );
+  /** Which preset the current size is, or null for a custom size set by the slider or the grip. */
+  const activePreset = $derived(activeFloatSize($videoState.floatHeightFrac));
 
   // go2rtc is only needed for the WebRTC path. A WebView without it (WebKitGTK builds with WebRTC
   // compiled out — Raspberry Pi OS among them) runs RTSP entirely on ffmpeg now, so demanding the
@@ -713,20 +713,34 @@
 
 {#snippet footer()}
   {#if $videoState.floating}
-    <!-- Size presets for the floating window. The window's own corner grip gives any size in
-         between; this is the one-click path to a big feed, and the only one on a touch screen
-         where dragging a 26 px grip is fiddly. -->
+    <!-- Floating-window size: three one-click presets plus a slider for anything between them.
+         The window's own corner grip does the same as the slider by dragging, but it is a 26 px
+         target on the window itself — easy to miss, and fiddly on a touch screen. None of the
+         preset buttons light up while the size is custom. -->
     <div class="vp-float-size">
       <span class="label">{$t('video.floatSize')}</span>
-      <SegmentedToggle
-        options={floatSizeOptions}
-        value={nearestFloatSize($videoState.floatHeightFrac)}
-        size="sm"
-        onchange={(key) => {
-          const p = FLOAT_SIZE_PRESETS.find((o) => o.key === key);
-          if (p) setFloatHeightFrac(p.frac);
-        }}
+      <div class="fs-presets">
+        {#each FLOAT_SIZE_PRESETS as p}
+          <Button
+            variant="mode"
+            size="sm"
+            active={activePreset === p.key}
+            title={$t('video.floatSizeHint', { values: { pct: Math.round(p.frac * 100) } })}
+            onclick={() => setFloatHeightFrac(p.frac)}
+          >{$t(`video.floatSize_${p.key}`)}</Button>
+        {/each}
+      </div>
+      <input
+        class="fs-slider"
+        type="range"
+        min={FLOAT_HEIGHT_MIN}
+        max={FLOAT_HEIGHT_MAX}
+        step="0.01"
+        aria-label={$t('video.floatSize')}
+        value={$videoState.floatHeightFrac}
+        oninput={(e) => setFloatHeightFrac(Number((e.currentTarget as HTMLInputElement).value))}
       />
+      <span class="fs-pct">{Math.round($videoState.floatHeightFrac * 100)}%</span>
     </div>
   {/if}
   <div class="vp-footer">
@@ -952,6 +966,7 @@
     align-items: center;
     gap: 8px;
     padding: 6px 0 2px;
+    flex-wrap: wrap;
   }
 
   .vp-float-size .label {
@@ -960,5 +975,28 @@
     text-transform: uppercase;
     letter-spacing: 0.03em;
     color: var(--mx-text-muted, #a8a8a8);
+  }
+
+  .fs-presets {
+    display: flex;
+    gap: 4px;
+  }
+
+  /* Takes the leftover width, but keeps a usable travel when the panel is narrow and the row wraps. */
+  .fs-slider {
+    flex: 1 1 90px;
+    min-width: 90px;
+    accent-color: var(--mx-red, #e0302c);
+    height: 18px;
+    cursor: pointer;
+  }
+
+  .fs-pct {
+    font-size: 11px;
+    color: var(--mx-text-muted, #a8a8a8);
+    min-width: 30px;
+    text-align: right;
+    /* Tabular digits so the row does not jitter as the slider moves through 9 % → 10 %. */
+    font-variant-numeric: tabular-nums;
   }
 </style>

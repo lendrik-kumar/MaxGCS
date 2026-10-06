@@ -193,7 +193,9 @@ const PREF_DEFAULTS: VideoPrefs = {
   floatSnapped: true,
   floatX: 16,
   floatY: 80,
-  floatHeightFrac: 0.2,
+  // Matches the Small preset, so a fresh install starts on a lit preset button rather than
+  // showing a custom size nobody chose.
+  floatHeightFrac: 0.25,
 };
 
 function loadPrefs(): VideoPrefs {
@@ -1476,22 +1478,28 @@ export function setFloatPos(floatX: number, floatY: number): void {
 export const FLOAT_HEIGHT_MIN = 0.1;
 export const FLOAT_HEIGHT_MAX = 0.85;
 
-/** The discrete sizes offered in the Video panel. Dragging the window's corner grip still gives any
- *  value in between; these exist so there is a one-click way to get a large feed without a drag. */
+/** The three one-click sizes offered in the Video panel, alongside the slider that sets any value
+ *  in between (and the window's own corner grip, which does the same by dragging). */
 export const FLOAT_SIZE_PRESETS = [
-  { key: 'small', frac: 0.2 },
-  { key: 'medium', frac: 0.35 },
-  { key: 'large', frac: 0.55 },
-  { key: 'huge', frac: 0.8 },
+  { key: 'small', frac: 0.25 },
+  { key: 'medium', frac: 0.5 },
+  { key: 'large', frac: 0.8 },
 ] as const;
 
 export type FloatSizeKey = (typeof FLOAT_SIZE_PRESETS)[number]['key'];
 
-/** Preset whose fraction is closest to the current height, for highlighting the active segment. */
-export function nearestFloatSize(frac: number): FloatSizeKey {
-  return FLOAT_SIZE_PRESETS.reduce((best, o) =>
-    Math.abs(o.frac - frac) < Math.abs(best.frac - frac) ? o : best,
-  ).key;
+/** Half the slider's step, so a value the slider produced never reads as "exactly a preset". */
+const PRESET_EPSILON = 0.005;
+
+/**
+ * The preset the current height *is*, or null when it sits between them.
+ *
+ * Deliberately an exact match rather than a nearest-neighbour one: with a free slider in the same
+ * row, highlighting the closest preset would show "Medium" lit while the slider reads 42 %. Null
+ * leaves all three unlit, which is the honest state for a custom size.
+ */
+export function activeFloatSize(frac: number): FloatSizeKey | null {
+  return FLOAT_SIZE_PRESETS.find((o) => Math.abs(o.frac - frac) < PRESET_EPSILON)?.key ?? null;
 }
 
 const FLOAT_MIN = FLOAT_HEIGHT_MIN;
