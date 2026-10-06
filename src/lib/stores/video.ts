@@ -1469,8 +1469,33 @@ export function setFloatPos(floatX: number, floatY: number): void {
   savePrefs();
 }
 
-const FLOAT_MIN = 0.1;
-const FLOAT_MAX = 0.3;
+/** Floating-window height as a fraction of the viewport. Exported so `FloatingVideoWindow` clamps
+ *  to the same bounds the setter enforces — the two used to carry their own copies of 0.1/0.3 and
+ *  could disagree. The ceiling is 0.85 rather than a full 1.0 so the window can never cover the
+ *  toolbar and status bar, which would leave no way to reach the controls that shrink it again. */
+export const FLOAT_HEIGHT_MIN = 0.1;
+export const FLOAT_HEIGHT_MAX = 0.85;
+
+/** The discrete sizes offered in the Video panel. Dragging the window's corner grip still gives any
+ *  value in between; these exist so there is a one-click way to get a large feed without a drag. */
+export const FLOAT_SIZE_PRESETS = [
+  { key: 'small', frac: 0.2 },
+  { key: 'medium', frac: 0.35 },
+  { key: 'large', frac: 0.55 },
+  { key: 'huge', frac: 0.8 },
+] as const;
+
+export type FloatSizeKey = (typeof FLOAT_SIZE_PRESETS)[number]['key'];
+
+/** Preset whose fraction is closest to the current height, for highlighting the active segment. */
+export function nearestFloatSize(frac: number): FloatSizeKey {
+  return FLOAT_SIZE_PRESETS.reduce((best, o) =>
+    Math.abs(o.frac - frac) < Math.abs(best.frac - frac) ? o : best,
+  ).key;
+}
+
+const FLOAT_MIN = FLOAT_HEIGHT_MIN;
+const FLOAT_MAX = FLOAT_HEIGHT_MAX;
 export function setFloatHeightFrac(frac: number): void {
   patch({ floatHeightFrac: Math.min(FLOAT_MAX, Math.max(FLOAT_MIN, frac)) });
   savePrefs();

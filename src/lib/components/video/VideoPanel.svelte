@@ -36,6 +36,9 @@
     isWebrtcAvailable,
     type RtspTransport,
     toggleFloating,
+    setFloatHeightFrac,
+    FLOAT_SIZE_PRESETS,
+    nearestFloatSize,
     enterPiP,
     pipSupported,
     type VideoResolution,
@@ -58,6 +61,7 @@
   } from '$lib/helpers/videoCapabilities';
   import PanelShell from '$lib/components/panel/PanelShell.svelte';
   import Button from '$lib/components/panel/Button.svelte';
+  import SegmentedToggle from '$lib/components/panel/SegmentedToggle.svelte';
   import Toggle from '$lib/components/panel/Toggle.svelte';
   import { isLinux } from '$lib/platform';
   import VideoReconnectOverlay from '$lib/components/video/VideoReconnectOverlay.svelte';
@@ -173,6 +177,10 @@
 
   // Native capture is available on every OS (Linux V4L2 / Windows DirectShow / macOS AVFoundation).
   const KINDS: VideoKind[] = ['camera', 'rtsp', 'native'];
+
+  const floatSizeOptions = $derived(
+    FLOAT_SIZE_PRESETS.map((o) => ({ value: o.key, label: $t(`video.floatSize_${o.key}`) })),
+  );
 
   // go2rtc is only needed for the WebRTC path. A WebView without it (WebKitGTK builds with WebRTC
   // compiled out — Raspberry Pi OS among them) runs RTSP entirely on ffmpeg now, so demanding the
@@ -704,6 +712,23 @@
 {/snippet}
 
 {#snippet footer()}
+  {#if $videoState.floating}
+    <!-- Size presets for the floating window. The window's own corner grip gives any size in
+         between; this is the one-click path to a big feed, and the only one on a touch screen
+         where dragging a 26 px grip is fiddly. -->
+    <div class="vp-float-size">
+      <span class="label">{$t('video.floatSize')}</span>
+      <SegmentedToggle
+        options={floatSizeOptions}
+        value={nearestFloatSize($videoState.floatHeightFrac)}
+        size="sm"
+        onchange={(key) => {
+          const p = FLOAT_SIZE_PRESETS.find((o) => o.key === key);
+          if (p) setFloatHeightFrac(p.frac);
+        }}
+      />
+    </div>
+  {/if}
   <div class="vp-footer">
     <!-- Floating window: a mode button (active = on) — can be toggled off from here. -->
     <Button variant="mode" active={$videoState.floating} onclick={() => toggleFloating()}>
@@ -921,4 +946,19 @@
   .dl-pct { font-size: 11px; color: #9ad0e8; font-variant-numeric: tabular-nums; min-width: 30px; text-align: right; }
 
   .vp-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
+
+  .vp-float-size {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0 2px;
+  }
+
+  .vp-float-size .label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--mx-text-muted, #a8a8a8);
+  }
 </style>

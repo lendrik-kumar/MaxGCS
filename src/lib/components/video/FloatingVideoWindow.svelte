@@ -8,7 +8,8 @@
   //  • snaps to the bottom-left corner (above the status bar; the bottom widget dock reflows out of
   //    the way — handled in +page.svelte) or floats freely
   //  • drag the video body to move (away from the corner un-snaps; dropping near the corner re-snaps)
-  //  • TOP-RIGHT corner grip resizes (aspect-locked, 10–30 % of vh, touch-friendly)
+  //  • TOP-RIGHT corner grip resizes (aspect-locked, 10–85 % of vh, touch-friendly); the Video
+  //    panel also offers one-click size presets
   //  • TOP-LEFT ✕ closes (swaps back first if it was primary)
   //  • double-click the video to swap it with the map (→ videoPrimary)
   //
@@ -30,6 +31,8 @@
     setMapLocation,
     toggleFloating,
     reportMjpegError,
+    FLOAT_HEIGHT_MIN,
+    FLOAT_HEIGHT_MAX,
   } from '$lib/stores/video';
   import { canvasSink, mjpegSink } from '$lib/controllers/mjpegSink';
   import VideoReconnectOverlay from '$lib/components/video/VideoReconnectOverlay.svelte';
@@ -48,19 +51,37 @@
   const MARGIN = 8;
   const SNAP_BOTTOM = 30; // align the snapped bottom with the widgets (above the 24px status bar)
   const SNAP_THRESHOLD = 56;
-  const FRAC_MIN = 0.1;
-  const FRAC_MAX = 0.3;
+  const FRAC_MIN = FLOAT_HEIGHT_MIN;
+  const FRAC_MAX = FLOAT_HEIGHT_MAX;
   // Floor the height so the mini-map's 4 stacked control buttons (4×38 + 3×8 gap + 8 bottom offset +
   // breathing room) never overflow the frame in videoPrimary mode.
   const MIN_H_PX = 200;
+  /** Width ceiling as a fraction of the viewport, so a wide feed still leaves the map visible. */
+  const WIDTH_FRAC_MAX = 0.9;
 
   let floatWinEl = $state<HTMLDivElement | null>(null);
 
   const aspect = $derived($videoState.aspect || 16 / 9);
-  const height = $derived(
-    Math.min(Math.round(FRAC_MAX * vh), Math.max(MIN_H_PX, Math.round($videoState.floatHeightFrac * vh))),
-  );
-  const width = $derived(Math.min(Math.round(height * aspect), Math.round(vw * 0.7)));
+
+  // Size is derived height-first from the stored fraction, then shrunk to fit the width ceiling —
+  // and crucially the height follows that shrink, so the frame keeps the feed's aspect ratio at
+  // every size. The content is `object-fit: cover`, so a frame wider or taller than the source
+  // aspect crops the picture rather than letterboxing it; before the width ceiling fed back into
+  // the height, growing the window past it quietly cropped the sides.
+  const size = $derived.by(() => {
+    const maxH = FRAC_MAX * vh;
+    const minH = Math.min(MIN_H_PX, maxH); // a very short viewport must still produce a valid box
+    let h = Math.min(maxH, Math.max(minH, $videoState.floatHeightFrac * vh));
+    let w = h * aspect;
+    const maxW = vw * WIDTH_FRAC_MAX;
+    if (w > maxW) {
+      w = maxW;
+      h = Math.max(minH, w / aspect);
+    }
+    return { width: Math.round(w), height: Math.round(h) };
+  });
+  const height = $derived(size.height);
+  const width = $derived(size.width);
   const left = $derived($videoState.floatSnapped ? MARGIN : $videoState.floatX);
   const top = $derived($videoState.floatSnapped ? vh - height - SNAP_BOTTOM : $videoState.floatY);
 
