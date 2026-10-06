@@ -1024,6 +1024,8 @@
     "fmtKml": "Unkomprimierter Google-Earth-Track.",
     "fmtGpx": "GPS-Exchange-Track, für die meisten Karten- und Analysetools.",
     "fmtCsv": "Telemetrie als Spalten, für Tabellenkalkulationen.",
+    "fmtGroupFc": "Flightcontroller-Log",
+    "fmtBin": "ArduPilot-DataFlash-Log für Mission Planner und andere Log-Analysetools. Aus der aufgezeichneten Telemetrie neu kodiert, nicht vom Flightcontroller geschrieben.",
     "importKflight": ".kflight importieren",
     "importRaw": "Rohlog importieren",
     "import": "Importieren",

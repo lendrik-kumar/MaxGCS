@@ -168,8 +168,9 @@ pub(super) fn haversine_m(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
 /// Two families of output, with deliberately different treatment of the samples:
 ///   - Geometry (KMZ/KML/GPX/CSV) — GPS-filtered, de-spiked and simplified, because a mapping
 ///     tool wants a clean path and a flight with no fix has no path to draw.
-///   - Readable logs (TXT/MD/JSON, see `text_export`) — every sample exactly as recorded, since
-///     these document the flight rather than its shape, and must work for a GPS-less flight.
+///   - Readable logs (TXT/MD/JSON, see `text_export`) and the ArduPilot DataFlash re-encode
+///     (BIN, see `dataflash_export`) — every sample exactly as recorded, since these document
+///     the flight rather than its shape, and must work for a GPS-less flight.
 pub fn export_track(
     flight: &Flight,
     track: &[TelemetryRecord],
@@ -181,11 +182,13 @@ pub fn export_track(
         .unwrap_or("")
         .to_lowercase();
 
-    // Readable logs run on the unfiltered samples — dispatch before any of the geometry cleanup.
+    // Readable logs and the DataFlash re-encode run on the unfiltered samples — dispatch before
+    // any of the geometry cleanup.
     match ext.as_str() {
         "txt" | "log" => return super::text_export::export_txt(flight, track, output_path),
         "md" => return super::text_export::export_md(flight, track, output_path),
         "json" => return super::text_export::export_json(flight, track, output_path),
+        "bin" => return super::dataflash_export::export_bin(flight, track, output_path),
         _ => {}
     }
 

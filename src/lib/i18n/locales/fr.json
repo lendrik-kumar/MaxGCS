@@ -973,6 +973,8 @@
     "fmtKml": "Trace Google Earth non compressée.",
     "fmtGpx": "Trace GPS Exchange, pour la plupart des outils de cartographie et d'analyse.",
     "fmtCsv": "Télémétrie en colonnes, pour les tableurs.",
+    "fmtGroupFc": "Journal du contrôleur de vol",
+    "fmtBin": "Journal DataFlash ArduPilot, pour Mission Planner et autres analyseurs de journaux. Ré-encodé à partir de la télémétrie enregistrée, non écrit par le contrôleur de vol.",
     "importKflight": "Importer .kflight",
     "decoderMissingTitle": "blackbox_decode introuvable",
     "decoderMissingMsg": "Les journaux Blackbox INAV nécessitent l'outil externe « blackbox_decode », qui n'est pas installé. Le télécharger automatiquement depuis les releases officielles iNavFlight ?",

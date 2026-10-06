@@ -4,11 +4,13 @@
 // Flight Recording & Logbook Module
 // Records telemetry data during flights (arm→disarm) into a SQLite database.
 // Supports optional raw text logging, reverse geocoding, and weather metadata.
-// Recorded flights export as geometry (track_export: KMZ/KML/GPX/CSV) or as readable logs
-// with an event timeline (text_export: TXT/MD/JSON).
+// Recorded flights export as geometry (track_export: KMZ/KML/GPX/CSV), as readable logs with
+// an event timeline (text_export: TXT/MD/JSON), or as an ArduPilot DataFlash .bin for Mission
+// Planner (dataflash_export).
 
 pub mod db;
 pub mod ardupilot;
+pub mod dataflash_export;
 pub mod blackbox;
 pub mod decoder;
 pub mod exchange;

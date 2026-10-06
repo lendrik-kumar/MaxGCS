@@ -29,7 +29,16 @@
     { ext: 'csv', label: 'CSV', descKey: 'logbook.fmtCsv' },
   ];
 
-  export const ALL_FORMATS: ExportFormat[] = [...READABLE_FORMATS, ...TRACK_FORMATS];
+  /** Flight-controller log formats — re-encoded for other ground stations' analysis tools. */
+  export const FC_LOG_FORMATS: ExportFormat[] = [
+    { ext: 'bin', label: 'DataFlash BIN', descKey: 'logbook.fmtBin' },
+  ];
+
+  export const ALL_FORMATS: ExportFormat[] = [
+    ...READABLE_FORMATS,
+    ...TRACK_FORMATS,
+    ...FC_LOG_FORMATS,
+  ];
 </script>
 
 <script lang="ts">
@@ -108,6 +117,19 @@
       <fieldset class="group">
         <legend>{$t('logbook.fmtGroupTrack')}</legend>
         {#each TRACK_FORMATS as f}
+          <label class="row" class:sel={selected === f.ext}>
+            <input type="radio" bind:group={selected} value={f.ext} />
+            <span class="row-text">
+              <span class="row-label">{f.label}<span class="row-ext">.{f.ext}</span></span>
+              <span class="row-desc">{$t(f.descKey)}</span>
+            </span>
+          </label>
+        {/each}
+      </fieldset>
+
+      <fieldset class="group">
+        <legend>{$t('logbook.fmtGroupFc')}</legend>
+        {#each FC_LOG_FORMATS as f}
           <label class="row" class:sel={selected === f.ext}>
             <input type="radio" bind:group={selected} value={f.ext} />
             <span class="row-text">

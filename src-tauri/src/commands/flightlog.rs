@@ -821,8 +821,9 @@ pub async fn flightlog_import_raw(
 
 // ── Export / Import / Offline replay ────────────────────────────────
 
-/// Export a flight as KMZ/KML/GPX/CSV geometry, or as a readable TXT/MD/JSON log with an
-/// event timeline (format detected from the file extension).
+/// Export a flight as KMZ/KML/GPX/CSV geometry, a readable TXT/MD/JSON log with an event
+/// timeline, or an ArduPilot DataFlash BIN for Mission Planner (format detected from the
+/// file extension).
 #[tauri::command]
 pub fn flightlog_export_track(
     flight_id: i64,
