@@ -86,7 +86,7 @@
   import WidgetPanel from "$lib/components/WidgetPanel.svelte";
   import { LARGE_BASE_VMIN } from "$lib/config/widgetRegistry";
   import FloatingVideoWindow from "$lib/components/video/FloatingVideoWindow.svelte";
-  import { initVideo, videoState, videoStream, bindVideoEl, setMapLocation, setFloatHeightFrac, setFloatPos, registerPiPElement, reportMjpegError } from "$lib/stores/video";
+  import { initVideo, videoState, videoStream, bindVideoEl, setMapLocation, setFloatHeightFrac, setFloatPos, registerPiPElement, reportMjpegError, floatWindowSize, clampFloatFrac, isFloatExpanded, toggleFloatExpanded, FLOAT_SNAP_BOTTOM, FLOAT_TOP_SAFE } from "$lib/stores/video";
   import { canvasSink, mjpegSink } from "$lib/controllers/mjpegSink";
   import { lowPowerActive } from "$lib/stores/lowPower";
   import { initPulseBlink } from "$lib/stores/pulseBlink";
@@ -254,13 +254,18 @@
   let sideDockW = $state(200);
   let sideDockH = $state(400);
 
+  // Global UI scale (1 = 100%, up to 2). Zooms the chrome via `.ui-scale`; the map
+  // (`.layer-map`) stays unzoomed/native. See docs/archive/UI_SCALING.md.
+  let uiScale = $state(1);
+
   // Viewport size (for the snapped floating-video reserve)
   let winW = $state(typeof window !== 'undefined' ? window.innerWidth : 1280);
   let winH = $state(typeof window !== 'undefined' ? window.innerHeight : 720);
-  // Width the bottom dock must yield to the bottom-left snapped video window.
+  // Width the bottom dock must yield to the bottom-left snapped video window (logical px, like the
+  // dock itself — see floatWindowSize).
   const videoReserve = $derived(
     $videoState.floating && $videoState.floatSnapped
-      ? Math.min($videoState.floatHeightFrac * winH * ($videoState.aspect || 16 / 9), winW * 0.7) + 16
+      ? floatWindowSize($videoState.floatHeightFrac, $videoState.aspect, winW / uiScale, winH / uiScale).w + 16
       : 0,
   );
 
@@ -278,23 +283,22 @@
     if (pipVideoEl) registerPiPElement(pipVideoEl);
   });
 
-  // Global UI scale (1 = 100%, up to 2). Zooms the chrome via `.ui-scale`; the map
-  // (`.layer-map`) stays unzoomed/native. See docs/archive/UI_SCALING.md.
-  let uiScale = $state(1);
-
   // Floating-window rect (must match FloatingVideoWindow's own computation) — used
   // to place the map inside the window's frame when the view is swapped. The window
   // lives in the zoomed `.ui-scale` layer but the map is unzoomed, so the visual rect
   // is the window's logical rect * uiScale.
-  // Must match FloatingVideoWindow's geometry exactly (incl. the 200px min-height floor that keeps
-  // the mini-map's 4 control buttons from overflowing) so the in-frame map aligns with the frame.
-  const FLOAT_MIN_H = 200;
-  const floatH = $derived(
-    Math.min(Math.round(0.3 * winH), Math.max(FLOAT_MIN_H, Math.round($videoState.floatHeightFrac * winH))),
-  );
-  const floatW = $derived(Math.min(Math.round(floatH * ($videoState.aspect || 16 / 9)), Math.round(winW * 0.7)));
+  // Must match FloatingVideoWindow's geometry exactly (incl. the min-height floor that keeps the
+  // mini-map's 4 control buttons from overflowing) so the in-frame map aligns with the frame — both
+  // take it from floatWindowSize in the video store. Logical px: the logical viewport is the real one
+  // divided by uiScale.
+  const logicalW = $derived(winW / uiScale);
+  const logicalH = $derived(winH / uiScale);
+  const floatSize = $derived(floatWindowSize($videoState.floatHeightFrac, $videoState.aspect, logicalW, logicalH));
+  const floatH = $derived(floatSize.h);
+  const floatW = $derived(floatSize.w);
   const floatLeft = $derived($videoState.floatSnapped ? 8 : $videoState.floatX);
-  const floatTop = $derived($videoState.floatSnapped ? winH - floatH - 30 : $videoState.floatY);
+  const floatTop = $derived($videoState.floatSnapped ? logicalH - floatH - FLOAT_SNAP_BOTTOM : $videoState.floatY);
+  const floatExpanded = $derived(isFloatExpanded($videoState.floatHeightFrac, logicalH));
   // The single map jumps to whichever video surface was double-clicked: `floating` → the chromeless
   // floating window frame, `widget` → the video-widget tile (its published rect). Every other surface
   // shows video. `main` (default) = the normal full-screen map.
@@ -342,11 +346,17 @@
   }
   function miniResizeMove(e: PointerEvent) {
     if (!miniResizing) return;
-    const delta = (mrStartY - e.clientY) / winH; // drag up → larger
-    const fracMin = Math.max(0.1, FLOAT_MIN_H / winH);
-    const newFrac = Math.min(0.3, Math.max(fracMin, mrStartFrac + delta));
+    const delta = (mrStartY - e.clientY) / winH; // drag up → larger (a fraction of the screen height)
+    const newFrac = clampFloatFrac(mrStartFrac + delta, logicalH);
     setFloatHeightFrac(newFrac);
-    if (!mrSnapped) setFloatPos($videoState.floatX, mrStartBottom - newFrac * winH);
+    if (!mrSnapped) {
+      // Bottom edge stays put; never under the toolbar, and pulled back in if the right edge overflows.
+      const next = floatWindowSize(newFrac, $videoState.aspect, logicalW, logicalH);
+      setFloatPos(
+        Math.max(0, Math.min($videoState.floatX, logicalW - next.w)),
+        Math.max(FLOAT_TOP_SAFE, mrStartBottom - next.h),
+      );
+    }
   }
   function miniResizeUp() {
     miniResizing = false;
@@ -2609,6 +2619,21 @@
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="miniframe-ctl" style={mapFrameStyle}>
       <button class="mf-corner mf-close" onclick={() => setMapLocation('main')} title={$t('video.close')}>✕</button>
+      <!-- expand / restore — same toggle as the video window's (shared size state) -->
+      <button
+        class="mf-corner mf-expand"
+        onclick={() => toggleFloatExpanded(logicalW, logicalH)}
+        title={floatExpanded ? $t('video.restoreWindow') : $t('video.expandWindow')}
+        aria-label={floatExpanded ? $t('video.restoreWindow') : $t('video.expandWindow')}
+      >
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          {#if floatExpanded}
+            <path d="M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7" />
+          {:else}
+            <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" />
+          {/if}
+        </svg>
+      </button>
       <div class="mf-corner mf-resize" onpointerdown={miniResizeDown} title="Resize"></div>
     </div>
   {/if}
@@ -2927,7 +2952,7 @@
   <video bind:this={pipVideoEl} class="pip-source" autoplay muted playsinline></video>
 
   <!-- ======= FLOATING VIDEO WINDOW ======= -->
-  <FloatingVideoWindow />
+  <FloatingVideoWindow {uiScale} />
 
   <!-- ======= MAP CONTROLS RESERVED AREA (bottom-right corner of the confined map panel) ======= -->
   <div class="zone-map-controls">
@@ -3172,6 +3197,23 @@
   }
   .mf-close:hover {
     background: rgba(212, 0, 0, 0.7);
+    color: #fff;
+  }
+  .mf-expand {
+    left: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: #e0e0e0;
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0 0 8px 0;
+    cursor: pointer;
+  }
+  .mf-expand:hover {
+    background: rgba(224, 48, 44, 0.7);
     color: #fff;
   }
   .mf-resize {

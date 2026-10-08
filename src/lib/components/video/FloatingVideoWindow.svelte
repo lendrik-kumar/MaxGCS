@@ -8,9 +8,10 @@
   //  • snaps to the bottom-left corner (above the status bar; the bottom widget dock reflows out of
   //    the way — handled in +page.svelte) or floats freely
   //  • drag the video body to move (away from the corner un-snaps; dropping near the corner re-snaps)
-  //  • TOP-RIGHT corner grip resizes (aspect-locked, 10–30 % of vh, touch-friendly)
-  //  • TOP-LEFT ✕ closes (swaps back first if it was primary)
-  //  • double-click the video to swap it with the map (→ videoPrimary)
+  //  • TOP-RIGHT corner grip resizes (aspect-locked, 10–80 % of vh, touch-friendly)
+  //  • TOP-LEFT ✕ closes (swaps back first if it was primary); next to it, ⤢ toggles between the
+  //    current size and the largest that fits (for a TV / big display), and ⇄ swaps with the map
+  //  • double-click the video to swap it with the map (→ videoPrimary) — same as the ⇄ button
   //
   // No title bar (space is precious on a flight display). Layering: separate absolutely-positioned
   // layers share the page stacking context (the .float-win wrapper has no z-index). The map (rendered
@@ -29,16 +30,29 @@
     setFloatHeightFrac,
     setMapLocation,
     toggleFloating,
+    toggleFloatExpanded,
+    isFloatExpanded,
+    clampFloatFrac,
+    floatWindowSize,
+    FLOAT_SNAP_BOTTOM,
+    FLOAT_TOP_SAFE,
     reportMjpegError,
   } from '$lib/stores/video';
   import { canvasSink, mjpegSink } from '$lib/controllers/mjpegSink';
   import VideoReconnectOverlay from '$lib/components/video/VideoReconnectOverlay.svelte';
+
+  // The page's UI scale (1 = 100 %). This window sits inside the `.ui-scale` layer, which is scaled up
+  // with a CSS transform, so its coordinates are logical px: the logical viewport is the real one
+  // divided by the scale. Without this a large window would overflow a scaled-up (TV) display.
+  let { uiScale = 1 }: { uiScale?: number } = $props();
 
   // True while the map occupies this floating frame (so this window shows the map, not video).
   const mapHere = $derived($videoState.mapLocation === 'floating');
 
   let vw = $state(typeof window !== 'undefined' ? window.innerWidth : 1280);
   let vh = $state(typeof window !== 'undefined' ? window.innerHeight : 720);
+  const lvw = $derived(vw / uiScale);
+  const lvh = $derived(vh / uiScale);
 
   let videoEl = $state<HTMLVideoElement | null>(null);
   $effect(() => {
@@ -46,23 +60,21 @@
   });
 
   const MARGIN = 8;
-  const SNAP_BOTTOM = 30; // align the snapped bottom with the widgets (above the 24px status bar)
   const SNAP_THRESHOLD = 56;
-  const FRAC_MIN = 0.1;
-  const FRAC_MAX = 0.3;
-  // Floor the height so the mini-map's 4 stacked control buttons (4×38 + 3×8 gap + 8 bottom offset +
-  // breathing room) never overflow the frame in videoPrimary mode.
-  const MIN_H_PX = 200;
 
   let floatWinEl = $state<HTMLDivElement | null>(null);
 
   const aspect = $derived($videoState.aspect || 16 / 9);
-  const height = $derived(
-    Math.min(Math.round(FRAC_MAX * vh), Math.max(MIN_H_PX, Math.round($videoState.floatHeightFrac * vh))),
-  );
-  const width = $derived(Math.min(Math.round(height * aspect), Math.round(vw * 0.7)));
+  // Size/limits live in the video store (floatWindowSize) so +page's map-in-frame overlay, which has to
+  // line up with this window exactly, uses the very same numbers.
+  const size = $derived(floatWindowSize($videoState.floatHeightFrac, aspect, lvw, lvh));
+  const height = $derived(size.h);
+  const width = $derived(size.w);
   const left = $derived($videoState.floatSnapped ? MARGIN : $videoState.floatX);
-  const top = $derived($videoState.floatSnapped ? vh - height - SNAP_BOTTOM : $videoState.floatY);
+  const top = $derived($videoState.floatSnapped ? lvh - height - FLOAT_SNAP_BOTTOM : $videoState.floatY);
+  const expanded = $derived(isFloatExpanded($videoState.floatHeightFrac, lvh));
+  // The extra buttons sit beside the ✕; skip them on a window too narrow to fit them clear of the grip.
+  const showExtraButtons = $derived(width >= 130);
 
   // This ✕ only shows while the window holds video → it closes the floating window. (When the map is
   // in the frame, +page renders its own ✕ on top that sends the map back to the main view instead.)
@@ -91,15 +103,16 @@
   }
   function onDragMove(e: PointerEvent) {
     if (!pendingDrag) return;
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
+    // Pointer deltas are real px; the window's coordinates are logical (÷ uiScale).
+    const dx = (e.clientX - startX) / uiScale;
+    const dy = (e.clientY - startY) / uiScale;
     if (!moved && Math.hypot(dx, dy) < 4) return;
     if (!moved) {
       moved = true;
       setFloatSnapped(false); // first real movement detaches from the corner
     }
-    const nx = Math.max(0, Math.min(baseLeft + dx, vw - width));
-    const ny = Math.max(0, Math.min(baseTop + dy, vh - height));
+    const nx = Math.max(0, Math.min(baseLeft + dx, lvw - width));
+    const ny = Math.max(0, Math.min(baseTop + dy, lvh - height));
     setFloatPos(nx, ny);
   }
   function onDragUp() {
@@ -110,7 +123,7 @@
     if (!moved) return;
     // Re-snap if dropped near the bottom-left corner.
     const nearLeft = $videoState.floatX <= MARGIN + SNAP_THRESHOLD;
-    const nearBottom = $videoState.floatY + height >= vh - SNAP_BOTTOM - SNAP_THRESHOLD;
+    const nearBottom = $videoState.floatY + height >= lvh - FLOAT_SNAP_BOTTOM - SNAP_THRESHOLD;
     if (nearLeft && nearBottom) setFloatSnapped(true);
   }
 
@@ -134,13 +147,18 @@
   }
   function onResizeMove(e: PointerEvent) {
     if (!resizing) return;
-    const delta = (resizeStartY - e.clientY) / vh; // drag up → larger
-    const fracMin = Math.max(FRAC_MIN, MIN_H_PX / vh); // honour the 4-button px floor
-    const newFrac = Math.min(FRAC_MAX, Math.max(fracMin, startFrac + delta));
+    const delta = (resizeStartY - e.clientY) / vh; // drag up → larger (a fraction of the screen height)
+    // Clamped to the px floor (4 mini-map buttons) and to what fits below the toolbar.
+    const newFrac = clampFloatFrac(startFrac + delta, lvh);
     setFloatHeightFrac(newFrac);
     if (!startSnapped) {
-      // Keep the bottom edge fixed (top-right grip): top = bottom − newHeight.
-      setFloatPos($videoState.floatX, startBottom - newFrac * vh);
+      // Keep the bottom edge fixed (top-right grip): top = bottom − newHeight, but never under the
+      // toolbar, and pull the window back in if growing pushed its right edge off-screen.
+      const next = floatWindowSize(newFrac, aspect, lvw, lvh);
+      setFloatPos(
+        Math.max(0, Math.min($videoState.floatX, lvw - next.w)),
+        Math.max(FLOAT_TOP_SAFE, startBottom - next.h),
+      );
     }
   }
   function onResizeUp() {
@@ -175,16 +193,16 @@
   }
   function frameMoveTo(cx: number, cy: number) {
     if (!fmActive) return;
-    const dx = cx - fmStartX;
-    const dy = cy - fmStartY;
+    const dx = (cx - fmStartX) / uiScale;
+    const dy = (cy - fmStartY) / uiScale;
     if (!fmMoved && Math.hypot(dx, dy) < 4) return;
     if (!fmMoved) {
       fmMoved = true;
       setFloatSnapped(false);
     }
     setFloatPos(
-      Math.max(0, Math.min(fmBaseLeft + dx, vw - width)),
-      Math.max(0, Math.min(fmBaseTop + dy, vh - height)),
+      Math.max(0, Math.min(fmBaseLeft + dx, lvw - width)),
+      Math.max(0, Math.min(fmBaseTop + dy, lvh - height)),
     );
   }
   function frameMoveEnd() {
@@ -192,7 +210,7 @@
     fmActive = false;
     if (!fmMoved) return;
     const nearLeft = $videoState.floatX <= MARGIN + SNAP_THRESHOLD;
-    const nearBottom = $videoState.floatY + height >= vh - SNAP_BOTTOM - SNAP_THRESHOLD;
+    const nearBottom = $videoState.floatY + height >= lvh - FLOAT_SNAP_BOTTOM - SNAP_THRESHOLD;
     if (nearLeft && nearBottom) setFloatSnapped(true);
   }
 
@@ -299,6 +317,35 @@
       <!-- close (top-left) — overlay, touch-sized -->
       <button class="fw-corner fw-close" onclick={closeWindow} title={$t('video.close')}>✕</button>
 
+      {#if showExtraButtons}
+        <!-- expand / restore — toggles between the current size and the largest that fits -->
+        <button
+          class="fw-corner fw-btn fw-expand"
+          onclick={() => toggleFloatExpanded(lvw, lvh)}
+          title={expanded ? $t('video.restoreWindow') : $t('video.expandWindow')}
+          aria-label={expanded ? $t('video.restoreWindow') : $t('video.expandWindow')}
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            {#if expanded}
+              <path d="M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7" />
+            {:else}
+              <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" />
+            {/if}
+          </svg>
+        </button>
+        <!-- swap with the map (same as double-clicking the video) -->
+        <button
+          class="fw-corner fw-btn fw-swap"
+          onclick={() => setMapLocation('floating')}
+          title={$t('video.swapWithMap')}
+          aria-label={$t('video.swapWithMap')}
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M7 7h13M16 3l4 4-4 4M17 17H4M8 13l-4 4 4 4" />
+          </svg>
+        </button>
+      {/if}
+
       <!-- resize grip (top-right) — visible, touch-sized -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div class="fw-corner fw-resize" onpointerdown={onResizePointerDown} title="Resize"></div>
@@ -392,6 +439,30 @@
   .fw-close:hover {
     background: rgba(212, 0, 0, 0.7);
     color: #fff;
+  }
+  /* Expand/restore + swap buttons — a strip continuing right of the ✕. */
+  .fw-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: #e0e0e0;
+    background: rgba(0, 0, 0, 0.45);
+    border: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0;
+    cursor: pointer;
+  }
+  .fw-btn:hover {
+    background: rgba(224, 48, 44, 0.7);
+    color: #fff;
+  }
+  .fw-expand {
+    left: 26px;
+  }
+  .fw-swap {
+    left: 52px;
+    border-radius: 0 0 8px 0;
   }
   .fw-resize {
     right: 0;

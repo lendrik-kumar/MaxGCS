@@ -131,7 +131,7 @@ export interface VideoState {
   /** Free position (px from top-left of the app window), used when not snapped. */
   floatX: number;
   floatY: number;
-  /** Window height as a fraction of the viewport height (0.1…0.3); width = height·aspect. */
+  /** Window height as a fraction of the viewport height (FLOAT_FRAC_MIN…FLOAT_FRAC_MAX); width = height·aspect. */
   floatHeightFrac: number;
   /** Where the single map instance currently lives (transient, not persisted). `main` = the normal
    *  full-screen map; `floating`/`widget` = the map jumped into that video surface (which double-
@@ -1431,11 +1431,83 @@ export function setFloatPos(floatX: number, floatY: number): void {
   savePrefs();
 }
 
-const FLOAT_MIN = 0.1;
-const FLOAT_MAX = 0.3;
+// Floating-window geometry, shared by FloatingVideoWindow and the map-in-frame overlay in +page (which
+// must line up with it exactly). All lengths are LOGICAL px — i.e. inside the `.ui-scale` layer, where
+// the viewport is `innerWidth / uiScale` × `innerHeight / uiScale` — so a big window still fits when the
+// UI is scaled up (e.g. on a TV). `frac` is the window height as a fraction of that logical viewport
+// height, which is also the fraction of the real screen it covers.
+export const FLOAT_FRAC_MIN = 0.1;
+export const FLOAT_FRAC_MAX = 0.8;
+/** Floor so the mini-map's 4 stacked control buttons never overflow the frame. */
+export const FLOAT_MIN_H_PX = 200;
+/** Gap between a snapped window's bottom edge and the viewport bottom (clears the 24px status bar). */
+export const FLOAT_SNAP_BOTTOM = 30;
+/** Keep a window's top edge below the 53px toolbar (z 200), or its ✕ / resize grip become unreachable. */
+export const FLOAT_TOP_SAFE = 56;
+export const FLOAT_WIDTH_FRAC_MAX = 0.9;
+
+/** Largest usable height fraction for a logical viewport height: the global cap, further limited so a
+ *  bottom-snapped window's top stays clear of the toolbar. */
+export function floatMaxFrac(lvh: number): number {
+  const fitsBelowToolbar = (lvh - FLOAT_SNAP_BOTTOM - FLOAT_TOP_SAFE) / lvh;
+  return Math.min(FLOAT_FRAC_MAX, Math.max(FLOAT_FRAC_MIN, fitsBelowToolbar));
+}
+
+export function clampFloatFrac(frac: number, lvh: number): number {
+  const hi = floatMaxFrac(lvh);
+  const lo = Math.min(hi, Math.max(FLOAT_FRAC_MIN, FLOAT_MIN_H_PX / lvh));
+  return Math.min(hi, Math.max(lo, frac));
+}
+
+/** Logical size of the floating window for a height fraction, the source aspect and the viewport. */
+export function floatWindowSize(
+  frac: number,
+  aspect: number,
+  lvw: number,
+  lvh: number,
+): { w: number; h: number } {
+  const maxH = Math.round(floatMaxFrac(lvh) * lvh);
+  const h = Math.min(maxH, Math.max(FLOAT_MIN_H_PX, Math.round(frac * lvh)));
+  const w = Math.min(Math.round(h * (aspect || 16 / 9)), Math.round(lvw * FLOAT_WIDTH_FRAC_MAX));
+  return { w, h };
+}
+
 export function setFloatHeightFrac(frac: number): void {
-  patch({ floatHeightFrac: Math.min(FLOAT_MAX, Math.max(FLOAT_MIN, frac)) });
+  patch({ floatHeightFrac: Math.min(FLOAT_FRAC_MAX, Math.max(FLOAT_FRAC_MIN, frac)) });
   savePrefs();
+}
+
+/** Size to restore when leaving the expanded state. Runtime-only: after a restart an expanded window
+ *  restores to the default size instead. */
+let floatPrevFrac: number | null = null;
+
+/** Whether the window is at its largest size for this viewport (drives the expand/restore icon). */
+export function isFloatExpanded(frac: number, lvh: number): boolean {
+  return frac >= floatMaxFrac(lvh) - 0.005;
+}
+
+/** Toggle the floating window between its current size and the largest one that fits. An unsnapped
+ *  window keeps its bottom edge in place (like the resize grip) and is nudged back inside the viewport. */
+export function toggleFloatExpanded(lvw: number, lvh: number): void {
+  const s = get(videoState);
+  const aspect = s.aspect || 16 / 9;
+  const expanded = isFloatExpanded(s.floatHeightFrac, lvh);
+  let next: number;
+  if (expanded) {
+    next = clampFloatFrac(floatPrevFrac ?? PREF_DEFAULTS.floatHeightFrac, lvh);
+  } else {
+    floatPrevFrac = s.floatHeightFrac;
+    next = floatMaxFrac(lvh);
+  }
+  if (!s.floatSnapped) {
+    const before = floatWindowSize(s.floatHeightFrac, aspect, lvw, lvh);
+    const after = floatWindowSize(next, aspect, lvw, lvh);
+    const bottom = s.floatY + before.h;
+    const x = Math.max(0, Math.min(s.floatX, lvw - after.w));
+    const y = Math.max(FLOAT_TOP_SAFE, Math.min(bottom - after.h, lvh - after.h));
+    patch({ floatX: x, floatY: y });
+  }
+  setFloatHeightFrac(next);
 }
 
 // ── Map ⇄ video placement ────────────────────────────────────────────

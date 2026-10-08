@@ -685,7 +685,10 @@
     "record": "Record (enhanced)",
     "recordHint": "Native capture only. Saves a denoised, sharpened, colour-corrected copy to disk — the live view is unaffected. Starting/stopping briefly restarts the feed.",
     "recordingTo": "Recording to {path}",
-    "genericDeviceLabel": "Secure Comm {n}"
+    "genericDeviceLabel": "Secure Comm {n}",
+    "expandWindow": "Expand window",
+    "restoreWindow": "Restore window size",
+    "swapWithMap": "Swap with map"
   },
   "recordings": {
     "title": "Recordings",
