@@ -86,7 +86,7 @@
   import WidgetPanel from "$lib/components/WidgetPanel.svelte";
   import { LARGE_BASE_VMIN } from "$lib/config/widgetRegistry";
   import FloatingVideoWindow from "$lib/components/video/FloatingVideoWindow.svelte";
-  import { initVideo, videoState, videoStream, bindVideoEl, setMapLocation, setFloatHeightFrac, setFloatPos, registerPiPElement, reportMjpegError, floatWindowSize, clampFloatFrac, isFloatExpanded, toggleFloatExpanded, FLOAT_SNAP_BOTTOM, FLOAT_TOP_SAFE, videoDisplayAspect, fitContain } from "$lib/stores/video";
+  import { initVideo, videoState, videoStream, bindVideoEl, setMapLocation, setFloatHeightFrac, setFloatPos, registerPiPElement, reportMjpegError, floatWindowSize, clampFloatFrac, isFloatExpanded, toggleFloatExpanded, FLOAT_SNAP_BOTTOM, FLOAT_TOP_SAFE, FLOAT_EDGE, clampFloatPos, videoDisplayAspect, fitContain } from "$lib/stores/video";
   import { canvasSink, mjpegSink } from "$lib/controllers/mjpegSink";
   import { lowPowerActive } from "$lib/stores/lowPower";
   import { initPulseBlink } from "$lib/stores/pulseBlink";
@@ -296,8 +296,9 @@
   const floatSize = $derived(floatWindowSize($videoState.floatHeightFrac, $videoDisplayAspect, logicalW, logicalH));
   const floatH = $derived(floatSize.h);
   const floatW = $derived(floatSize.w);
-  const floatLeft = $derived($videoState.floatSnapped ? 8 : $videoState.floatX);
-  const floatTop = $derived($videoState.floatSnapped ? logicalH - floatH - FLOAT_SNAP_BOTTOM : $videoState.floatY);
+  const floatFreePos = $derived(clampFloatPos($videoState.floatX, $videoState.floatY, floatW, floatH, logicalW, logicalH));
+  const floatLeft = $derived($videoState.floatSnapped ? 8 : floatFreePos.x);
+  const floatTop = $derived($videoState.floatSnapped ? logicalH - floatH - FLOAT_SNAP_BOTTOM : floatFreePos.y);
   const floatExpanded = $derived(isFloatExpanded($videoState.floatHeightFrac, logicalH));
 
   // Full-screen video (shown when the map has swapped into a frame): the wrapper's measured size and
@@ -365,7 +366,7 @@
       // Bottom edge stays put; never under the toolbar, and pulled back in if the right edge overflows.
       const next = floatWindowSize(newFrac, $videoDisplayAspect, logicalW, logicalH);
       setFloatPos(
-        Math.max(0, Math.min($videoState.floatX, logicalW - next.w)),
+        Math.max(FLOAT_EDGE, Math.min($videoState.floatX, logicalW - next.w - FLOAT_EDGE)),
         Math.max(FLOAT_TOP_SAFE, mrStartBottom - next.h),
       );
     }

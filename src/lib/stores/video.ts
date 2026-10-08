@@ -1502,6 +1502,27 @@ export const FLOAT_SNAP_BOTTOM = 30;
 /** Keep a window's top edge below the 53px toolbar (z 200), or its ✕ / resize grip become unreachable. */
 export const FLOAT_TOP_SAFE = 56;
 export const FLOAT_WIDTH_FRAC_MAX = 0.9;
+/** Keep a free-floating window this far from the screen's left/right/bottom edges. The app window's own
+ *  invisible resize strips (WindowResizeBorders, 4–8px, above everything) live at those edges: a
+ *  press on the window's border there would resize the whole app window instead of the video window. */
+export const FLOAT_EDGE = 12;
+
+/** A free-floating window's top-left kept inside the safe area (clear of the resize strips at the screen
+ *  edges and of the toolbar). Applied when drawing as well as when moving, so a position saved by an
+ *  earlier session, or left stale by a screen change, can never leave the window on those edges. */
+export function clampFloatPos(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  lvw: number,
+  lvh: number,
+): { x: number; y: number } {
+  return {
+    x: Math.max(FLOAT_EDGE, Math.min(x, lvw - w - FLOAT_EDGE)),
+    y: Math.max(FLOAT_TOP_SAFE, Math.min(y, lvh - h - FLOAT_EDGE)),
+  };
+}
 
 /** Largest usable height fraction for a logical viewport height: the global cap, further limited so a
  *  bottom-snapped window's top stays clear of the toolbar. */
@@ -1569,8 +1590,8 @@ export function toggleFloatExpanded(lvw: number, lvh: number): void {
     const before = floatWindowSize(s.floatHeightFrac, aspect, lvw, lvh);
     const after = floatWindowSize(next, aspect, lvw, lvh);
     const bottom = s.floatY + before.h;
-    const x = Math.max(0, Math.min(s.floatX, lvw - after.w));
-    const y = Math.max(FLOAT_TOP_SAFE, Math.min(bottom - after.h, lvh - after.h));
+    const x = Math.max(FLOAT_EDGE, Math.min(s.floatX, lvw - after.w - FLOAT_EDGE));
+    const y = Math.max(FLOAT_TOP_SAFE, Math.min(bottom - after.h, lvh - after.h - FLOAT_EDGE));
     patch({ floatX: x, floatY: y });
   }
   setFloatHeightFrac(next);

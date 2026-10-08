@@ -35,8 +35,10 @@
     isFloatExpanded,
     clampFloatFrac,
     floatWindowSize,
+    clampFloatPos,
     FLOAT_SNAP_BOTTOM,
     FLOAT_TOP_SAFE,
+    FLOAT_EDGE,
     reportMjpegError,
   } from '$lib/stores/video';
   import { canvasSink, mjpegSink } from '$lib/controllers/mjpegSink';
@@ -73,8 +75,9 @@
   const size = $derived(floatWindowSize($videoState.floatHeightFrac, aspect, lvw, lvh));
   const height = $derived(size.h);
   const width = $derived(size.w);
-  const left = $derived($videoState.floatSnapped ? MARGIN : $videoState.floatX);
-  const top = $derived($videoState.floatSnapped ? lvh - height - FLOAT_SNAP_BOTTOM : $videoState.floatY);
+  const freePos = $derived(clampFloatPos($videoState.floatX, $videoState.floatY, width, height, lvw, lvh));
+  const left = $derived($videoState.floatSnapped ? MARGIN : freePos.x);
+  const top = $derived($videoState.floatSnapped ? lvh - height - FLOAT_SNAP_BOTTOM : freePos.y);
   const expanded = $derived(isFloatExpanded($videoState.floatHeightFrac, lvh));
   // The extra buttons sit beside the ✕; skip them on a window too narrow to fit them clear of the grip.
   const showExtraButtons = $derived(width >= 130);
@@ -114,8 +117,10 @@
       moved = true;
       setFloatSnapped(false); // first real movement detaches from the corner
     }
-    const nx = Math.max(0, Math.min(baseLeft + dx, lvw - width));
-    const ny = Math.max(0, Math.min(baseTop + dy, lvh - height));
+    // Kept clear of the screen edges (the app window's resize strips) and of the toolbar (the title-bar
+    // drag/maximize area) — see FLOAT_EDGE / FLOAT_TOP_SAFE.
+    const nx = Math.max(FLOAT_EDGE, Math.min(baseLeft + dx, lvw - width - FLOAT_EDGE));
+    const ny = Math.max(FLOAT_TOP_SAFE, Math.min(baseTop + dy, lvh - height - FLOAT_EDGE));
     setFloatPos(nx, ny);
   }
   function onDragUp() {
@@ -159,7 +164,7 @@
       // toolbar, and pull the window back in if growing pushed its right edge off-screen.
       const next = floatWindowSize(newFrac, aspect, lvw, lvh);
       setFloatPos(
-        Math.max(0, Math.min($videoState.floatX, lvw - next.w)),
+        Math.max(FLOAT_EDGE, Math.min($videoState.floatX, lvw - next.w - FLOAT_EDGE)),
         Math.max(FLOAT_TOP_SAFE, startBottom - next.h),
       );
     }
@@ -204,8 +209,8 @@
       setFloatSnapped(false);
     }
     setFloatPos(
-      Math.max(0, Math.min(fmBaseLeft + dx, lvw - width)),
-      Math.max(0, Math.min(fmBaseTop + dy, lvh - height)),
+      Math.max(FLOAT_EDGE, Math.min(fmBaseLeft + dx, lvw - width - FLOAT_EDGE)),
+      Math.max(FLOAT_TOP_SAFE, Math.min(fmBaseTop + dy, lvh - height - FLOAT_EDGE)),
     );
   }
   function frameMoveEnd() {
