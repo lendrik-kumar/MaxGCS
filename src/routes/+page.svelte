@@ -86,7 +86,7 @@
   import WidgetPanel from "$lib/components/WidgetPanel.svelte";
   import { LARGE_BASE_VMIN } from "$lib/config/widgetRegistry";
   import FloatingVideoWindow from "$lib/components/video/FloatingVideoWindow.svelte";
-  import { initVideo, videoState, videoStream, bindVideoEl, setMapLocation, setFloatHeightFrac, setFloatPos, registerPiPElement, reportMjpegError, floatWindowSize, clampFloatFrac, isFloatExpanded, toggleFloatExpanded, FLOAT_SNAP_BOTTOM, FLOAT_TOP_SAFE } from "$lib/stores/video";
+  import { initVideo, videoState, videoStream, bindVideoEl, setMapLocation, setFloatHeightFrac, setFloatPos, registerPiPElement, reportMjpegError, floatWindowSize, clampFloatFrac, isFloatExpanded, toggleFloatExpanded, FLOAT_SNAP_BOTTOM, FLOAT_TOP_SAFE, videoDisplayAspect, fitContain } from "$lib/stores/video";
   import { canvasSink, mjpegSink } from "$lib/controllers/mjpegSink";
   import { lowPowerActive } from "$lib/stores/lowPower";
   import { initPulseBlink } from "$lib/stores/pulseBlink";
@@ -265,7 +265,7 @@
   // dock itself — see floatWindowSize).
   const videoReserve = $derived(
     $videoState.floating && $videoState.floatSnapped
-      ? floatWindowSize($videoState.floatHeightFrac, $videoState.aspect, winW / uiScale, winH / uiScale).w + 16
+      ? floatWindowSize($videoState.floatHeightFrac, $videoDisplayAspect, winW / uiScale, winH / uiScale).w + 16
       : 0,
   );
 
@@ -293,12 +293,24 @@
   // divided by uiScale.
   const logicalW = $derived(winW / uiScale);
   const logicalH = $derived(winH / uiScale);
-  const floatSize = $derived(floatWindowSize($videoState.floatHeightFrac, $videoState.aspect, logicalW, logicalH));
+  const floatSize = $derived(floatWindowSize($videoState.floatHeightFrac, $videoDisplayAspect, logicalW, logicalH));
   const floatH = $derived(floatSize.h);
   const floatW = $derived(floatSize.w);
   const floatLeft = $derived($videoState.floatSnapped ? 8 : $videoState.floatX);
   const floatTop = $derived($videoState.floatSnapped ? logicalH - floatH - FLOAT_SNAP_BOTTOM : $videoState.floatY);
   const floatExpanded = $derived(isFloatExpanded($videoState.floatHeightFrac, logicalH));
+
+  // Full-screen video (shown when the map has swapped into a frame): the wrapper's measured size and
+  // the box the picture is stretched into — the display shape fitted inside the wrapper (so any black
+  // bars are on the sides/top by the SHAPE's choice, not the media's raw pixel ratio), or the whole
+  // wrapper for "Stretch to fill".
+  let mapWrapW = $state(0);
+  let mapWrapH = $state(0);
+  const mapVideoBox = $derived(
+    $videoState.displayRatio === 'fill'
+      ? { w: mapWrapW, h: mapWrapH }
+      : fitContain($videoDisplayAspect, mapWrapW, mapWrapH),
+  );
   // The single map jumps to whichever video surface was double-clicked: `floating` → the chromeless
   // floating window frame, `widget` → the video-widget tile (its published rect). Every other surface
   // shows video. `main` (default) = the normal full-screen map.
@@ -351,7 +363,7 @@
     setFloatHeightFrac(newFrac);
     if (!mrSnapped) {
       // Bottom edge stays put; never under the toolbar, and pulled back in if the right edge overflows.
-      const next = floatWindowSize(newFrac, $videoState.aspect, logicalW, logicalH);
+      const next = floatWindowSize(newFrac, $videoDisplayAspect, logicalW, logicalH);
       setFloatPos(
         Math.max(0, Math.min($videoState.floatX, logicalW - next.w)),
         Math.max(FLOAT_TOP_SAFE, mrStartBottom - next.h),
@@ -2692,9 +2704,15 @@
   <!-- Full-size video shown in the main map zone whenever the map has jumped to another surface.
        Double-click brings the map back to the main full-screen view. -->
   {#if mapInFrame}
-    <!-- Wrapper carries the inset + black backdrop; the video fills it with object-fit: contain so
-         it scales to the window (full height/width) without distortion — bars where aspect differs. -->
-    <div class="map-video-wrap">
+    <!-- Wrapper carries the inset + black backdrop. The picture sits in an explicit box (map-video-box)
+         sized to the Display ratio setting — the display shape fitted inside the wrapper, or the whole
+         wrapper for "Stretch to fill" — and is stretched to that box (object-fit: fill), so analog SD
+         shows at its true 4:3 and bars only appear where the SHAPE leaves room. -->
+    <div class="map-video-wrap" bind:clientWidth={mapWrapW} bind:clientHeight={mapWrapH}>
+      <div
+        class="map-video-box"
+        style="left:{Math.round((mapWrapW - mapVideoBox.w) / 2)}px; top:{Math.round((mapWrapH - mapVideoBox.h) / 2)}px; width:{mapVideoBox.w}px; height:{mapVideoBox.h}px;"
+      >
       {#if $videoState.mjpegUrl}
         <!-- Native / MJPEG feed (no MediaStream): drawn by the off-thread reader where the WebView
              allows it, otherwise the plain <img> multipart stream. -->
@@ -2730,6 +2748,7 @@
           ondblclick={() => setMapLocation('main')}
         ></video>
       {/if}
+      </div>
     </div>
   {/if}
 
@@ -3236,14 +3255,21 @@
     background: #000;
     z-index: 0;
   }
-  /* width/height 100% (not auto) so the replaced <video> stretches to the wrapper instead of using
-     its intrinsic stream resolution; object-fit: contain keeps the aspect ratio (letterbox bars). */
+  /* The box the picture is stretched into; its position/size are set inline from the Display ratio
+     setting (see mapVideoBox). */
+  .map-video-box {
+    position: absolute;
+  }
+  /* width/height 100% of the box (not auto) so the replaced <video> stretches to it instead of using
+     its intrinsic stream resolution; object-fit: fill because the box already has the right shape
+     (the display aspect, or the whole area for "Stretch to fill"), which also corrects non-square-pixel
+     sources like analog SD. */
   .map-video {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: fill;
     display: block;
   }
   .map-video.mirror {

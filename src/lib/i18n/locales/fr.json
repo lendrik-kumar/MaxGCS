@@ -666,7 +666,11 @@
     "genericDeviceLabel": "Comm sécurisée {n}",
     "expandWindow": "Agrandir la fenêtre",
     "restoreWindow": "Restaurer la taille de la fenêtre",
-    "swapWithMap": "Échanger avec la carte"
+    "swapWithMap": "Échanger avec la carte",
+    "displayRatio": "Format d'image",
+    "ratioAuto": "Auto (selon la source)",
+    "ratioFill": "Étirer pour remplir",
+    "displayRatioHint": "Auto affiche la vidéo analogique des lunettes (480p/576p) en vrai 4:3 et tout le reste dans son propre format. Choisissez 4:3 ou 16:9 pour en forcer un. « Étirer pour remplir » couvre toute la vue plein écran sans bandes noires — pratique sur une TV."
   },
   "recordings": {
     "title": "Enregistrements",

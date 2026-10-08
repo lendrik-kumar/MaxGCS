@@ -24,6 +24,9 @@
     setVideoResolution,
     setCameraFps,
     setVideoMirror,
+    setDisplayRatio,
+    videoDisplayAspect,
+    type DisplayRatio,
     setDisableHwAccel,
     setVideoKind,
     setRtspUrl,
@@ -349,7 +352,7 @@
 
 {#snippet body()}
   <div class="vp-body">
-    <div class="preview" style="aspect-ratio: {$videoState.aspect};">
+    <div class="preview" style="aspect-ratio: {$videoDisplayAspect};">
       {#if $videoState.mjpegUrl}
         <!-- MJPEG multipart feed — off-thread reader where the WebView allows it, else an <img>
              whose per-part `load` carries both the frame count and the picture size. -->
@@ -689,6 +692,20 @@
       <span class="label">{$t('video.mirror')}</span>
     </div>
 
+    <label class="field">
+      <span class="label">{$t('video.displayRatio')}</span>
+      <select
+        value={$videoState.displayRatio}
+        onchange={(e) => setDisplayRatio((e.currentTarget as HTMLSelectElement).value as DisplayRatio)}
+      >
+        <option value="auto">{$t('video.ratioAuto')}</option>
+        <option value="4:3">4:3</option>
+        <option value="16:9">16:9</option>
+        <option value="fill">{$t('video.ratioFill')}</option>
+      </select>
+    </label>
+    <p class="hint">{$t('video.displayRatioHint')}</p>
+
     <!-- Escape hatch: some driver/hardware combinations pass the backend probe but still misbehave on
          a live feed. Hardware stays the default; this forces the software transcode. -->
     <div class="field-row">
@@ -743,11 +760,13 @@
   }
   /* will-change: own compositing layer — see VideoWidget: keeps the 60 fps MJPEG <img> from
      dirtying shared layer tiles every frame on WebKitGTK. */
-  .preview video { width: 100%; height: 100%; object-fit: contain; display: block; will-change: transform; }
+  /* `fill`: the box is already the display shape (aspect-ratio above), so this shows the whole picture
+     at that shape — and corrects non-square-pixel sources (analog SD), which `contain` could not. */
+  .preview video { width: 100%; height: 100%; object-fit: fill; display: block; will-change: transform; }
   .preview video.mirror { transform: scaleX(-1); }
   .preview video.hidden { visibility: hidden; }
   .preview img,
-  .preview canvas { width: 100%; height: 100%; object-fit: contain; display: block; will-change: transform; }
+  .preview canvas { width: 100%; height: 100%; object-fit: fill; display: block; will-change: transform; }
   .preview img.mirror,
   .preview canvas.mirror { transform: scaleX(-1); }
   .preview-placeholder {

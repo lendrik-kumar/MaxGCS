@@ -17,7 +17,7 @@
 // `getUserMedia` works in WebView2 (Windows) and WebKitGTK (Linux) and, with the camera entitlement,
 // WKWebView (macOS), so the camera path needs no backend. rtsp + native use the Rust backend.
 
-import { writable, get } from 'svelte/store';
+import { writable, get, derived } from 'svelte/store';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { t } from 'svelte-i18n';
@@ -56,6 +56,11 @@ export interface RtspConnection {
 }
 /** Where the single map instance currently lives (the inverse of which surfaces show video). */
 export type MapLocation = 'main' | 'floating' | 'widget';
+/** How the picture is shaped on screen. `auto` = the source's own shape, except analog SD (goggles
+ *  through an AV capture card), which is shown at its true 4:3; `4:3` / `16:9` force that shape;
+ *  `fill` additionally stretches the full-screen view over the whole area (no black bars). */
+export type DisplayRatio = 'auto' | '4:3' | '16:9' | 'fill';
+const DISPLAY_RATIOS: readonly DisplayRatio[] = ['auto', '4:3', '16:9', 'fill'];
 
 export interface VideoState {
   /** Active source kind. `camera` → getUserMedia MediaStream; `rtsp` → go2rtc (WebRTC or MJPEG);
@@ -113,7 +118,10 @@ export interface VideoState {
   recordingPath: string | null;
   /** Mirror horizontally (front-facing cams) — applied by the display sinks. */
   mirror: boolean;
-  /** Source aspect ratio (w/h); drives the widget / floating-window sizing. */
+  /** Display ratio mode — see `DisplayRatio` / `resolveDisplayAspect`. Persisted. */
+  displayRatio: DisplayRatio;
+  /** Source aspect ratio (w/h) of the raw pixels. Surfaces size themselves from the resolved
+   *  display aspect (`videoDisplayAspect`), not from this directly. */
   aspect: number;
   /** Negotiated track settings (for the info line); null until live. */
   width: number | null;
@@ -164,6 +172,7 @@ interface VideoPrefs {
   nativeHeight: number;
   nativeFps: number;
   disableHwAccel: boolean;
+  displayRatio: DisplayRatio;
   mirror: boolean;
   floating: boolean;
   floatSnapped: boolean;
@@ -188,6 +197,7 @@ const PREF_DEFAULTS: VideoPrefs = {
   nativeHeight: 720,
   nativeFps: 30,
   disableHwAccel: false,
+  displayRatio: 'auto',
   mirror: false,
   floating: false,
   floatSnapped: true,
@@ -220,6 +230,9 @@ function loadPrefs(): VideoPrefs {
         nativeHeight: p.nativeHeight ?? 720,
         nativeFps: p.nativeFps ?? 30,
         disableHwAccel: p.disableHwAccel ?? false,
+        displayRatio: DISPLAY_RATIOS.includes(p.displayRatio as DisplayRatio)
+          ? (p.displayRatio as DisplayRatio)
+          : 'auto',
       };
     }
   } catch {
@@ -250,6 +263,7 @@ function savePrefs(): void {
         nativeHeight: s.nativeSel.height,
         nativeFps: s.nativeSel.fps,
         disableHwAccel: s.disableHwAccel,
+        displayRatio: s.displayRatio,
         mirror: s.mirror,
         floating: s.floating,
         floatSnapped: s.floatSnapped,
@@ -292,6 +306,7 @@ const INITIAL: VideoState = {
   mjpegUrl: null,
   activeTranscode: null,
   disableHwAccel: boot.disableHwAccel,
+  displayRatio: boot.displayRatio,
   recording: false,
   recordingPath: null,
   mirror: boot.mirror,
@@ -311,6 +326,43 @@ const INITIAL: VideoState = {
 };
 
 export const videoState = writable<VideoState>({ ...INITIAL });
+
+/** Analog SD as it comes out of an AV capture card: 720×480 / 720×576 (and CIF-ish cousins). The frame
+ *  is stored with non-square pixels — its width/height (1.5, 1.25) is NOT the shape it is meant to be
+ *  viewed at (4:3), so displaying it at its pixel ratio looks stretched, and a TV makes that obvious.
+ *  Goggle video over an AV-to-USB dongle is exactly this. */
+function isAnalogSd(width: number | null, height: number | null): boolean {
+  return !!width && !!height && width <= 720 && [240, 288, 480, 486, 576].includes(height);
+}
+
+/** The shape (width/height) the picture should be shown at for a ratio mode. Pure — unit-testable. */
+export function resolveDisplayAspect(
+  ratio: DisplayRatio,
+  width: number | null,
+  height: number | null,
+  sourceAspect: number,
+): number {
+  if (ratio === '4:3') return 4 / 3;
+  if (ratio === '16:9') return 16 / 9;
+  // auto / fill: the source's own shape, except analog SD which is really 4:3.
+  if (isAnalogSd(width, height)) return 4 / 3;
+  return sourceAspect || 16 / 9;
+}
+
+/** The resolved display shape, kept in step with the source and the ratio setting. Every video surface
+ *  (panel preview, floating window, full-screen swap, the map frame that mirrors the window) sizes from
+ *  this one value, so they never disagree. */
+export const videoDisplayAspect = derived(videoState, (s) =>
+  resolveDisplayAspect(s.displayRatio, s.width, s.height, s.aspect),
+);
+
+/** Largest `aspect`-shaped box that fits inside boxW × boxH (CSS `contain`, but explicit so the picture
+ *  can be stretched to a shape different from the media's own pixel ratio with `object-fit: fill`). */
+export function fitContain(aspect: number, boxW: number, boxH: number): { w: number; h: number } {
+  const a = aspect || 16 / 9;
+  const w = Math.min(boxW, boxH * a);
+  return { w: Math.round(w), h: Math.round(w / a) };
+}
 
 /**
  * The single live MediaStream that every sink renders. For `camera` it is the
@@ -1403,6 +1455,11 @@ export function setVideoMirror(mirror: boolean): void {
   savePrefs();
 }
 
+export function setDisplayRatio(displayRatio: DisplayRatio): void {
+  patch({ displayRatio });
+  savePrefs();
+}
+
 /** Force the software transcode regardless of what the backend's hardware probe found. Restarts a
  *  live RTSP feed so the change takes effect immediately — the decision is made when the source is
  *  registered with go2rtc, not per frame. */
@@ -1466,9 +1523,18 @@ export function floatWindowSize(
   lvw: number,
   lvh: number,
 ): { w: number; h: number } {
+  const a = aspect || 16 / 9;
   const maxH = Math.round(floatMaxFrac(lvh) * lvh);
-  const h = Math.min(maxH, Math.max(FLOAT_MIN_H_PX, Math.round(frac * lvh)));
-  const w = Math.min(Math.round(h * (aspect || 16 / 9)), Math.round(lvw * FLOAT_WIDTH_FRAC_MAX));
+  let h = Math.min(maxH, Math.max(FLOAT_MIN_H_PX, Math.round(frac * lvh)));
+  let w = Math.round(h * a);
+  const maxW = Math.round(lvw * FLOAT_WIDTH_FRAC_MAX);
+  if (w > maxW) {
+    // Too wide for the screen: shrink the height with it so the window keeps the picture's shape (the
+    // picture is stretched to the window, so a wrong shape here would distort it) — but not below the
+    // px floor the mini-map's buttons need.
+    w = maxW;
+    h = Math.min(h, Math.max(FLOAT_MIN_H_PX, Math.round(w / a)));
+  }
   return { w, h };
 }
 
@@ -1490,7 +1556,7 @@ export function isFloatExpanded(frac: number, lvh: number): boolean {
  *  window keeps its bottom edge in place (like the resize grip) and is nudged back inside the viewport. */
 export function toggleFloatExpanded(lvw: number, lvh: number): void {
   const s = get(videoState);
-  const aspect = s.aspect || 16 / 9;
+  const aspect = resolveDisplayAspect(s.displayRatio, s.width, s.height, s.aspect);
   const expanded = isFloatExpanded(s.floatHeightFrac, lvh);
   let next: number;
   if (expanded) {

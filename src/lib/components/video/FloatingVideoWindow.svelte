@@ -24,6 +24,7 @@
   import {
     videoStream,
     videoState,
+    videoDisplayAspect,
     bindVideoEl,
     setFloatPos,
     setFloatSnapped,
@@ -64,7 +65,9 @@
 
   let floatWinEl = $state<HTMLDivElement | null>(null);
 
-  const aspect = $derived($videoState.aspect || 16 / 9);
+  // The resolved display shape (the Display ratio setting + analog-SD correction), not the raw pixel
+  // ratio — the picture below is stretched to exactly this shape.
+  const aspect = $derived($videoDisplayAspect);
   // Size/limits live in the video store (floatWindowSize) so +page's map-in-frame overlay, which has to
   // line up with this window exactly, uses the very same numbers.
   const size = $derived(floatWindowSize($videoState.floatHeightFrac, aspect, lvw, lvh));
@@ -391,7 +394,10 @@
   .fw-body canvas {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    /* The window is sized to the display shape (see floatWindowSize), so `fill` shows the whole
+       picture at that shape — unlike `cover`, which cropped it and could not correct non-square
+       pixels (analog SD). */
+    object-fit: fill;
     display: block;
     /* Own compositing layer — see VideoWidget: keeps the 60 fps MJPEG <img> from dirtying shared
        layer tiles every frame on WebKitGTK. */

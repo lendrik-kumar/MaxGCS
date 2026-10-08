@@ -688,7 +688,11 @@
     "genericDeviceLabel": "Sichere Verbindung {n}",
     "expandWindow": "Fenster vergrößern",
     "restoreWindow": "Fenstergröße zurücksetzen",
-    "swapWithMap": "Mit Karte tauschen"
+    "swapWithMap": "Mit Karte tauschen",
+    "displayRatio": "Bildformat",
+    "ratioAuto": "Auto (wie die Quelle)",
+    "ratioFill": "Auf Vollbild strecken",
+    "displayRatioHint": "Auto zeigt analoge Brillen-Videos (480p/576p) im echten 4:3 und alles andere in seinem eigenen Format. 4:3 oder 16:9 erzwingt ein Format. „Auf Vollbild strecken“ füllt die ganze Vollbildansicht ohne schwarze Ränder — praktisch am Fernseher."
   },
   "recordings": {
     "title": "Aufnahmen",

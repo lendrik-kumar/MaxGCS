@@ -688,7 +688,11 @@
     "genericDeviceLabel": "Secure Comm {n}",
     "expandWindow": "Expand window",
     "restoreWindow": "Restore window size",
-    "swapWithMap": "Swap with map"
+    "swapWithMap": "Swap with map",
+    "displayRatio": "Display ratio",
+    "ratioAuto": "Auto (match the source)",
+    "ratioFill": "Stretch to fill",
+    "displayRatioHint": "Auto shows analog goggle video (480p/576p) at its true 4:3 and everything else at its own shape. Pick 4:3 or 16:9 to force one. Stretch to fill covers the whole full-screen view with no black bars — handy on a TV."
   },
   "recordings": {
     "title": "Recordings",
