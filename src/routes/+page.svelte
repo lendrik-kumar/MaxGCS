@@ -2756,10 +2756,10 @@
       </div>
       </div>
       <!-- On-screen zoom buttons (for when there is no mouse wheel, e.g. touch). -->
-      <div class="map-zoom-ctl">
+      <div class="vz-ctl">
         {#each VIDEO_ZOOM_LEVELS as z}
           <button
-            class="map-zoom-btn"
+            class="vz-btn"
             class:active={$videoState.zoom === z}
             onclick={() => setVideoZoom(z)}
             title={$t('video.zoom') + ' ' + z + '×'}
@@ -3284,7 +3284,7 @@
     inset: 0;
     transform-origin: 50% 50%;
   }
-  .map-zoom-ctl {
+  .vz-ctl {
     position: absolute;
     /* Top-left: the bottom/right edges sit under the telemetry widgets and the nav rail's panels. */
     left: 12px;
@@ -3296,7 +3296,7 @@
     border-radius: 6px;
     padding: 2px;
   }
-  .map-zoom-btn {
+  .vz-btn {
     min-width: 34px;
     height: 26px;
     padding: 0 6px;
@@ -3308,11 +3308,11 @@
     font-weight: 600;
     cursor: pointer;
   }
-  .map-zoom-btn:hover {
+  .vz-btn:hover {
     background: rgba(224, 48, 44, 0.5);
     color: #fff;
   }
-  .map-zoom-btn.active {
+  .vz-btn.active {
     background: rgba(224, 48, 44, 0.85);
     color: #fff;
   }

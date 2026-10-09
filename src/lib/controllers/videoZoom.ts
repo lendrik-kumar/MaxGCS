@@ -27,6 +27,19 @@ export function videoZoom(node: HTMLElement, opts: VideoZoomOptions = {}) {
   function onWheel(e: WheelEvent) {
     e.preventDefault();
     e.stopPropagation();
+    // Sideways scroll (a touchpad swipe, a tilt wheel, or Shift + wheel) pans left/right while zoomed
+    // instead of changing the zoom. Swiping left reveals more of the right side, i.e. the picture
+    // follows the fingers — the same direction a drag moves it.
+    const s = get(videoState);
+    const sideways = e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY);
+    if (sideways) {
+      if (s.zoom > 1) {
+        const dx = e.deltaX !== 0 ? e.deltaX : e.deltaY; // Shift + wheel reports the motion on deltaY
+        const travelX = ((s.zoom - 1) * node.getBoundingClientRect().width) / 2;
+        if (travelX > 0) panVideoBy(-dx / travelX, 0);
+      }
+      return;
+    }
     const now = performance.now();
     if (now - lastWheel < 150) return;
     lastWheel = now;

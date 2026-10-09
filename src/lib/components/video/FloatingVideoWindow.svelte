@@ -102,6 +102,9 @@
 
   function onBodyPointerDown(e: PointerEvent) {
     if ((e.target as HTMLElement).closest('.fw-corner')) return; // let the corner controls handle it
+    // Zoomed in: a drag on the picture pans it (videoZoom action on the body). The window is then moved
+    // by its top move bar (`.fw-move`, which calls this same handler).
+    if ($videoState.zoom > 1 && (e.currentTarget as HTMLElement).classList.contains('fw-body')) return;
     pendingDrag = true;
     moved = false;
     startX = e.clientX;
@@ -303,12 +306,13 @@
          instead, and the body is omitted. Double-click the video → the map jumps into this frame. -->
     {#if !mapHere}
       <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <!-- Wheel steps the zoom. No drag-to-pan here: dragging the body moves this window. -->
+      <!-- Wheel steps the zoom; sideways scroll and dragging pan the zoomed picture. At 1× a drag on the
+           body still moves the window; zoomed, the window moves by its top bar instead (.fw-move). -->
       <div
         class="fw-body"
         onpointerdown={onBodyPointerDown}
         ondblclick={() => setMapLocation('floating')}
-        use:videoZoom={{ wheel: true, pan: false }}
+        use:videoZoom={{ wheel: true, pan: true }}
       >
         {#if $videoState.status === 'live' && $videoState.mjpegUrl}
           <!-- Native / MJPEG feed (no MediaStream): drawn by the off-thread reader where the WebView
@@ -374,6 +378,20 @@
           title={$t('video.zoomCycle', { values: { n: $videoState.zoom } })}
           aria-label={$t('video.zoomCycle', { values: { n: $videoState.zoom } })}
         >{$videoState.zoom}×</button>
+      {/if}
+
+      <!-- Move bar — only while zoomed (dragging the picture pans it then, so the window needs its own
+           handle). Sits between the button strip and the resize grip. -->
+      {#if $videoState.zoom > 1}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+          class="fw-move"
+          style="left:{showExtraButtons ? 104 : 26}px;"
+          onpointerdown={onBodyPointerDown}
+          title={$t('video.moveWindow')}
+        >
+          <span class="fw-move-grip" aria-hidden="true"></span>
+        </div>
       {/if}
 
       <!-- resize grip (top-right) — visible, touch-sized -->
@@ -505,6 +523,30 @@
   }
   .fw-zoom.active {
     color: var(--mx-red, #e0302c);
+  }
+  /* Move bar shown while zoomed: a draggable strip along the top edge, right of the buttons. */
+  .fw-move {
+    position: absolute;
+    top: 0;
+    right: 26px; /* clear of the resize grip */
+    height: 26px;
+    z-index: 122;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.35);
+    cursor: move;
+    touch-action: none;
+  }
+  .fw-move:hover {
+    background: rgba(224, 48, 44, 0.45);
+  }
+  .fw-move-grip {
+    width: 28px;
+    height: 6px;
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.75) 1.4px, transparent 1.6px);
+    background-size: 7px 6px;
   }
   /* Carries the digital zoom/pan so it composes with the media's own mirror flip. */
   .zoom-layer {
