@@ -472,8 +472,9 @@
           onchange={(e) => setVideoDevice((e.currentTarget as HTMLSelectElement).value || null)}
         >
           <option value="">{$t('video.defaultDevice')}</option>
-          {#each $videoState.devices as d}
-            <option value={d.deviceId}>{d.label}</option>
+          {#each $videoState.devices as d, i}
+            <!-- Hardware name (e.g. the capture card's model) is deliberately not shown. -->
+            <option value={d.deviceId}>{$t('video.genericDeviceLabel', { values: { n: i + 1 } })}</option>
           {/each}
         </select>
       </label>
