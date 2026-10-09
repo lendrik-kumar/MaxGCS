@@ -9,8 +9,8 @@
   //    the way — handled in +page.svelte) or floats freely
   //  • drag the video body to move (away from the corner un-snaps; dropping near the corner re-snaps)
   //  • TOP-RIGHT corner grip resizes (aspect-locked, 10–80 % of vh, touch-friendly)
-  //  • TOP-LEFT ✕ closes (swaps back first if it was primary); next to it, ⤢ toggles between the
-  //    current size and the largest that fits (for a TV / big display), ⇄ swaps with the map, and the
+  //  • TOP-LEFT ✕ closes (swaps back first if it was primary); next to it, ⤢ maximizes the window to
+  //    the whole content area (for a TV / big display; Esc or ⤡ restores it), ⇄ swaps with the map, and the
   //    "N×" button cycles the digital zoom 1× → 2× → 4× (the mouse wheel steps it too)
   //  • double-click the video to swap it with the map (→ videoPrimary) — same as the ⇄ button
   //
@@ -32,10 +32,11 @@
     setFloatHeightFrac,
     setMapLocation,
     toggleFloating,
-    toggleFloatExpanded,
+    toggleFloatFull,
+    floatFullRect,
+    fitContain,
     cycleVideoZoom,
     videoZoomTransform,
-    isFloatExpanded,
     clampFloatFrac,
     floatWindowSize,
     clampFloatPos,
@@ -76,13 +77,27 @@
   const aspect = $derived($videoDisplayAspect);
   // Size/limits live in the video store (floatWindowSize) so +page's map-in-frame overlay, which has to
   // line up with this window exactly, uses the very same numbers.
-  const size = $derived(floatWindowSize($videoState.floatHeightFrac, aspect, lvw, lvh));
+  const full = $derived($videoState.floatFull);
+  const fullRect = $derived(floatFullRect(lvw, lvh));
+  const size = $derived(
+    full ? { w: fullRect.w, h: fullRect.h } : floatWindowSize($videoState.floatHeightFrac, aspect, lvw, lvh),
+  );
   const height = $derived(size.h);
   const width = $derived(size.w);
   const freePos = $derived(clampFloatPos($videoState.floatX, $videoState.floatY, width, height, lvw, lvh));
-  const left = $derived($videoState.floatSnapped ? MARGIN : freePos.x);
-  const top = $derived($videoState.floatSnapped ? lvh - height - FLOAT_SNAP_BOTTOM : freePos.y);
-  const expanded = $derived(isFloatExpanded($videoState.floatHeightFrac, lvh));
+  const left = $derived(full ? fullRect.x : $videoState.floatSnapped ? MARGIN : freePos.x);
+  const top = $derived(full ? fullRect.y : $videoState.floatSnapped ? lvh - height - FLOAT_SNAP_BOTTOM : freePos.y);
+  const expanded = $derived(full);
+  // Maximized, the window is the whole content area, which is rarely the picture's shape: the picture
+  // is fitted inside it (black bars on the sides) — or fills it all when the ratio is "Stretch to fill".
+  const pic = $derived(
+    full && $videoState.displayRatio !== 'fill' ? fitContain(aspect, width, height) : null,
+  );
+  const picStyle = $derived(
+    pic
+      ? `inset:auto; left:${Math.round((width - pic.w) / 2)}px; top:${Math.round((height - pic.h) / 2)}px; width:${pic.w}px; height:${pic.h}px;`
+      : '',
+  );
   // The extra buttons sit beside the ✕; skip them on a window too narrow to fit them clear of the grip.
   const showExtraButtons = $derived(width >= 130);
 
@@ -105,6 +120,7 @@
     // Zoomed in: a drag on the picture pans it (videoZoom action on the body). The window is then moved
     // by its top move bar (`.fw-move`, which calls this same handler).
     if ($videoState.zoom > 1 && (e.currentTarget as HTMLElement).classList.contains('fw-body')) return;
+    if (full) return; // maximized: nothing to move
     pendingDrag = true;
     moved = false;
     startX = e.clientX;
@@ -152,6 +168,7 @@
   let startSnapped = false;
   function onResizePointerDown(e: PointerEvent) {
     e.stopPropagation();
+    if (full) return;
     resizing = true;
     resizeStartY = e.clientY;
     startFrac = $videoState.floatHeightFrac;
@@ -294,13 +311,19 @@
   });
 </script>
 
-<svelte:window bind:innerWidth={vw} bind:innerHeight={vh} />
+<svelte:window
+  bind:innerWidth={vw}
+  bind:innerHeight={vh}
+  onkeydown={(e) => {
+    if (e.key === 'Escape' && full && $videoState.floating) toggleFloatFull();
+  }}
+/>
 
 {#if $videoState.floating}
   <!-- No z-index on the wrapper → no stacking context; layers compose with the top-level map. -->
   <div bind:this={floatWinEl} class="float-win" style="left:{left}px; top:{top}px; width:{width}px; height:{height}px;">
     <!-- frame background (behind) — border + shadow only; the video/map covers it (object-fit: cover) -->
-    <div class="fw-bg"></div>
+    <div class="fw-bg" class:fw-bg-full={full}></div>
 
     <!-- content: the video. When the map is in this frame, it's rendered (top-level) by +page here
          instead, and the body is omitted. Double-click the video → the map jumps into this frame. -->
@@ -310,6 +333,7 @@
            body still moves the window; zoomed, the window moves by its top bar instead (.fw-move). -->
       <div
         class="fw-body"
+        class:fw-full={full}
         onpointerdown={onBodyPointerDown}
         ondblclick={() => setMapLocation('floating')}
         use:videoZoom={{ wheel: true, pan: true }}
@@ -317,7 +341,7 @@
         {#if $videoState.status === 'live' && $videoState.mjpegUrl}
           <!-- Native / MJPEG feed (no MediaStream): drawn by the off-thread reader where the WebView
                allows it, otherwise the plain <img> multipart stream. -->
-          <div class="zoom-layer" style:transform={$videoZoomTransform}>
+          <div class="zoom-layer" style={picStyle} style:transform={$videoZoomTransform}>
             {#if $canvasSink}
               <canvas use:mjpegSink class:mirror={$videoState.mirror}></canvas>
             {:else}
@@ -326,7 +350,7 @@
             {/if}
           </div>
         {:else if $videoState.status === 'live'}
-          <div class="zoom-layer" style:transform={$videoZoomTransform}>
+          <div class="zoom-layer" style={picStyle} style:transform={$videoZoomTransform}>
             <!-- svelte-ignore a11y_media_has_caption -->
             <video bind:this={videoEl} autoplay muted playsinline class:mirror={$videoState.mirror}></video>
           </div>
@@ -347,7 +371,7 @@
         <!-- expand / restore — toggles between the current size and the largest that fits -->
         <button
           class="fw-corner fw-btn fw-expand"
-          onclick={() => toggleFloatExpanded(lvw, lvh)}
+          onclick={toggleFloatFull}
           title={expanded ? $t('video.restoreWindow') : $t('video.expandWindow')}
           aria-label={expanded ? $t('video.restoreWindow') : $t('video.expandWindow')}
         >
@@ -382,7 +406,7 @@
 
       <!-- Move bar — only while zoomed (dragging the picture pans it then, so the window needs its own
            handle). Sits between the button strip and the resize grip. -->
-      {#if $videoState.zoom > 1}
+      {#if $videoState.zoom > 1 && !full}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
           class="fw-move"
@@ -396,7 +420,9 @@
 
       <!-- resize grip (top-right) — visible, touch-sized -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div class="fw-corner fw-resize" onpointerdown={onResizePointerDown} title="Resize"></div>
+      {#if !full}
+        <div class="fw-corner fw-resize" onpointerdown={onResizePointerDown} title="Resize"></div>
+      {/if}
     {/if}
   </div>
 {/if}
@@ -433,6 +459,15 @@
   }
   .fw-body:active {
     cursor: grabbing;
+  }
+  /* Maximized: nothing to drag, and square corners flush with the toolbar/status bar. */
+  .fw-body.fw-full,
+  .fw-body.fw-full:active {
+    cursor: default;
+    border-radius: 0;
+  }
+  .fw-bg-full {
+    border-radius: 0;
   }
   .fw-body video,
   .fw-body img,

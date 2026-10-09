@@ -86,7 +86,7 @@
   import WidgetPanel from "$lib/components/WidgetPanel.svelte";
   import { LARGE_BASE_VMIN } from "$lib/config/widgetRegistry";
   import FloatingVideoWindow from "$lib/components/video/FloatingVideoWindow.svelte";
-  import { initVideo, videoState, videoStream, bindVideoEl, setMapLocation, setFloatHeightFrac, setFloatPos, registerPiPElement, reportMjpegError, floatWindowSize, clampFloatFrac, isFloatExpanded, toggleFloatExpanded, FLOAT_SNAP_BOTTOM, FLOAT_TOP_SAFE, FLOAT_EDGE, clampFloatPos, videoDisplayAspect, fitContain, videoZoomTransform, setVideoZoom, VIDEO_ZOOM_LEVELS } from "$lib/stores/video";
+  import { initVideo, videoState, videoStream, bindVideoEl, setMapLocation, setFloatHeightFrac, setFloatPos, registerPiPElement, reportMjpegError, floatWindowSize, clampFloatFrac, toggleFloatFull, floatFullRect, FLOAT_SNAP_BOTTOM, FLOAT_TOP_SAFE, FLOAT_EDGE, clampFloatPos, videoDisplayAspect, fitContain, videoZoomTransform, setVideoZoom, VIDEO_ZOOM_LEVELS } from "$lib/stores/video";
   import { videoZoom } from "$lib/controllers/videoZoom";
   import { canvasSink, mjpegSink } from "$lib/controllers/mjpegSink";
   import { lowPowerActive } from "$lib/stores/lowPower";
@@ -294,13 +294,21 @@
   // divided by uiScale.
   const logicalW = $derived(winW / uiScale);
   const logicalH = $derived(winH / uiScale);
-  const floatSize = $derived(floatWindowSize($videoState.floatHeightFrac, $videoDisplayAspect, logicalW, logicalH));
+  const floatFull = $derived($videoState.floatFull);
+  const floatFullR = $derived(floatFullRect(logicalW, logicalH));
+  const floatSize = $derived(
+    floatFull
+      ? { w: floatFullR.w, h: floatFullR.h }
+      : floatWindowSize($videoState.floatHeightFrac, $videoDisplayAspect, logicalW, logicalH),
+  );
   const floatH = $derived(floatSize.h);
   const floatW = $derived(floatSize.w);
   const floatFreePos = $derived(clampFloatPos($videoState.floatX, $videoState.floatY, floatW, floatH, logicalW, logicalH));
-  const floatLeft = $derived($videoState.floatSnapped ? 8 : floatFreePos.x);
-  const floatTop = $derived($videoState.floatSnapped ? logicalH - floatH - FLOAT_SNAP_BOTTOM : floatFreePos.y);
-  const floatExpanded = $derived(isFloatExpanded($videoState.floatHeightFrac, logicalH));
+  const floatLeft = $derived(floatFull ? floatFullR.x : $videoState.floatSnapped ? 8 : floatFreePos.x);
+  const floatTop = $derived(
+    floatFull ? floatFullR.y : $videoState.floatSnapped ? logicalH - floatH - FLOAT_SNAP_BOTTOM : floatFreePos.y,
+  );
+  const floatExpanded = $derived(floatFull);
 
   // Full-screen video (shown when the map has swapped into a frame): the wrapper's measured size and
   // the box the picture is stretched into — the display shape fitted inside the wrapper (so any black
@@ -2636,7 +2644,7 @@
       <!-- expand / restore — same toggle as the video window's (shared size state) -->
       <button
         class="mf-corner mf-expand"
-        onclick={() => toggleFloatExpanded(logicalW, logicalH)}
+        onclick={toggleFloatFull}
         title={floatExpanded ? $t('video.restoreWindow') : $t('video.expandWindow')}
         aria-label={floatExpanded ? $t('video.restoreWindow') : $t('video.expandWindow')}
       >
@@ -2648,7 +2656,9 @@
           {/if}
         </svg>
       </button>
-      <div class="mf-corner mf-resize" onpointerdown={miniResizeDown} title="Resize"></div>
+      {#if !floatFull}
+        <div class="mf-corner mf-resize" onpointerdown={miniResizeDown} title="Resize"></div>
+      {/if}
     </div>
   {/if}
 

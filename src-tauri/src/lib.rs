@@ -177,6 +177,43 @@ fn probe_gstreamer_support() {
     });
 }
 
+/// Keep the main window inside the screen it is on.
+///
+/// The window-state plugin restores the last size/position, and the config default is 1280x800 — so a
+/// window last used on a big display (the TV) or sized for a taller screen comes back larger than the
+/// current one, with its bottom/right edges (status bar, nav rail) cut off, or even placed off-screen.
+/// Shrinks it to the monitor's usable area (taskbar excluded) and nudges it back inside. A maximized or
+/// full-screen window is already fitted by the OS, so it is left alone.
+fn fit_window_to_screen(window: &tauri::WebviewWindow) {
+    if window.is_maximized().unwrap_or(false) || window.is_fullscreen().unwrap_or(false) {
+        return;
+    }
+    let monitor = match window.current_monitor() {
+        Ok(Some(m)) => m,
+        _ => match window.primary_monitor() {
+            Ok(Some(m)) => m,
+            _ => return,
+        },
+    };
+    let area = monitor.work_area();
+    let (ax, ay) = (area.position.x, area.position.y);
+    let (aw, ah) = (area.size.width as i32, area.size.height as i32);
+    let (Ok(size), Ok(pos)) = (window.outer_size(), window.outer_position()) else {
+        return;
+    };
+    let w = (size.width as i32).min(aw);
+    let h = (size.height as i32).min(ah);
+    let x = pos.x.min(ax + aw - w).max(ax);
+    let y = pos.y.min(ay + ah - h).max(ay);
+    if w != size.width as i32 || h != size.height as i32 {
+        let _ = window.set_size(tauri::PhysicalSize::new(w as u32, h as u32));
+    }
+    if x != pos.x || y != pos.y {
+        let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
+    }
+    log::info!("[window] fitted to screen work area: {w}x{h} at {x},{y}");
+}
+
 /// Raspberry Pi workaround: force the WebKit framebuffer to be reallocated once the UI is up.
 ///
 /// With GPU acceleration enabled, the Pi's **first** framebuffer allocation is reliably broken — the
@@ -359,6 +396,17 @@ pub fn run() {
 
     builder
         .setup(|_app| {
+            // Fit the (possibly restored) window to the current screen. The window-state plugin applies
+            // the saved geometry as the window is created, so wait a beat for that to settle first.
+            {
+                use tauri::Manager;
+                if let Some(window) = _app.get_webview_window("main") {
+                    tauri::async_runtime::spawn(async move {
+                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                        fit_window_to_screen(&window);
+                    });
+                }
+            }
             // Linux/WebKitGTK: stop trackpad/keyboard gestures from zooming the whole WebView frame.
             // WebKitGTK handles these natively in GTK and ignores any JS `preventDefault`, so they can
             // only be suppressed here (Windows/WebView2 + macOS use the JS guard in `+layout.svelte`).

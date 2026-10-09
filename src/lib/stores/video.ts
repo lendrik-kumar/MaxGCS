@@ -127,6 +127,8 @@ export interface VideoState {
    *  so the same pan reads correctly on surfaces of any size. */
   panX: number;
   panY: number;
+  /** The floating window is "maximized": it fills the whole content area (see `floatFullRect`). Runtime-only. */
+  floatFull: boolean;
   /** Source aspect ratio (w/h) of the raw pixels. Surfaces size themselves from the resolved
    *  display aspect (`videoDisplayAspect`), not from this directly. */
   aspect: number;
@@ -317,6 +319,7 @@ const INITIAL: VideoState = {
   zoom: 1,
   panX: 0,
   panY: 0,
+  floatFull: false,
   recording: false,
   recordingPath: null,
   mirror: boot.mirror,
@@ -1272,6 +1275,7 @@ export function stopVideo(): void {
     zoom: 1,
     panX: 0,
     panY: 0,
+    floatFull: false,
     recording: false,
     recordingPath: null,
   });
@@ -1623,37 +1627,30 @@ export function setFloatHeightFrac(frac: number): void {
   savePrefs();
 }
 
-/** Size to restore when leaving the expanded state. Runtime-only: after a restart an expanded window
- *  restores to the default size instead. */
-let floatPrevFrac: number | null = null;
+/** Toolbar height / status-bar height / nav-rail width (logical px) that the maximized window leaves clear. */
+export const FLOAT_FULL_TOP = 53;
+export const FLOAT_FULL_BOTTOM = 24;
+export const FLOAT_FULL_RIGHT = 62;
 
-/** Whether the window is at its largest size for this viewport (drives the expand/restore icon). */
-export function isFloatExpanded(frac: number, lvh: number): boolean {
-  return frac >= floatMaxFrac(lvh) - 0.005;
+/** The maximized floating window: the whole content area between the toolbar and the status bar, up to
+ *  the nav rail (kept visible so panels stay reachable). The size/position set before maximizing are
+ *  left untouched, so restoring brings the window back exactly as it was. */
+export function floatFullRect(lvw: number, lvh: number): { x: number; y: number; w: number; h: number } {
+  return {
+    // Left edge inset like any free window: the ✕ there must clear the app window's resize strip.
+    x: FLOAT_EDGE,
+    y: FLOAT_FULL_TOP,
+    w: Math.max(0, lvw - FLOAT_FULL_RIGHT - FLOAT_EDGE),
+    h: Math.max(0, lvh - FLOAT_FULL_TOP - FLOAT_FULL_BOTTOM),
+  };
 }
 
-/** Toggle the floating window between its current size and the largest one that fits. An unsnapped
- *  window keeps its bottom edge in place (like the resize grip) and is nudged back inside the viewport. */
-export function toggleFloatExpanded(lvw: number, lvh: number): void {
-  const s = get(videoState);
-  const aspect = resolveDisplayAspect(s.displayRatio, s.width, s.height, s.aspect);
-  const expanded = isFloatExpanded(s.floatHeightFrac, lvh);
-  let next: number;
-  if (expanded) {
-    next = clampFloatFrac(floatPrevFrac ?? PREF_DEFAULTS.floatHeightFrac, lvh);
-  } else {
-    floatPrevFrac = s.floatHeightFrac;
-    next = floatMaxFrac(lvh);
+/** Maximize the floating window to the whole content area, or restore it. */
+export function toggleFloatFull(): void {
+  patch({ floatFull: !get(videoState).floatFull });
+  if (typeof window !== 'undefined') {
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
   }
-  if (!s.floatSnapped) {
-    const before = floatWindowSize(s.floatHeightFrac, aspect, lvw, lvh);
-    const after = floatWindowSize(next, aspect, lvw, lvh);
-    const bottom = s.floatY + before.h;
-    const x = Math.max(FLOAT_EDGE, Math.min(s.floatX, lvw - after.w - FLOAT_EDGE));
-    const y = Math.max(FLOAT_TOP_SAFE, Math.min(bottom - after.h, lvh - after.h - FLOAT_EDGE));
-    patch({ floatX: x, floatY: y });
-  }
-  setFloatHeightFrac(next);
 }
 
 // ── Map ⇄ video placement ────────────────────────────────────────────
