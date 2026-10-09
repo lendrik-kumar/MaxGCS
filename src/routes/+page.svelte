@@ -86,7 +86,8 @@
   import WidgetPanel from "$lib/components/WidgetPanel.svelte";
   import { LARGE_BASE_VMIN } from "$lib/config/widgetRegistry";
   import FloatingVideoWindow from "$lib/components/video/FloatingVideoWindow.svelte";
-  import { initVideo, videoState, videoStream, bindVideoEl, setMapLocation, setFloatHeightFrac, setFloatPos, registerPiPElement, reportMjpegError, floatWindowSize, clampFloatFrac, isFloatExpanded, toggleFloatExpanded, FLOAT_SNAP_BOTTOM, FLOAT_TOP_SAFE, FLOAT_EDGE, clampFloatPos, videoDisplayAspect, fitContain } from "$lib/stores/video";
+  import { initVideo, videoState, videoStream, bindVideoEl, setMapLocation, setFloatHeightFrac, setFloatPos, registerPiPElement, reportMjpegError, floatWindowSize, clampFloatFrac, isFloatExpanded, toggleFloatExpanded, FLOAT_SNAP_BOTTOM, FLOAT_TOP_SAFE, FLOAT_EDGE, clampFloatPos, videoDisplayAspect, fitContain, videoZoomTransform, setVideoZoom, VIDEO_ZOOM_LEVELS } from "$lib/stores/video";
+  import { videoZoom } from "$lib/controllers/videoZoom";
   import { canvasSink, mjpegSink } from "$lib/controllers/mjpegSink";
   import { lowPowerActive } from "$lib/stores/lowPower";
   import { initPulseBlink } from "$lib/stores/pulseBlink";
@@ -2710,10 +2711,13 @@
          wrapper for "Stretch to fill" — and is stretched to that box (object-fit: fill), so analog SD
          shows at its true 4:3 and bars only appear where the SHAPE leaves room. -->
     <div class="map-video-wrap" bind:clientWidth={mapWrapW} bind:clientHeight={mapWrapH}>
+      <!-- Mouse wheel steps the digital zoom; drag pans when zoomed (double-click still swaps back). -->
       <div
         class="map-video-box"
         style="left:{Math.round((mapWrapW - mapVideoBox.w) / 2)}px; top:{Math.round((mapWrapH - mapVideoBox.h) / 2)}px; width:{mapVideoBox.w}px; height:{mapVideoBox.h}px;"
+        use:videoZoom={{ wheel: true, pan: true }}
       >
+      <div class="zoom-layer" style:transform={$videoZoomTransform}>
       {#if $videoState.mjpegUrl}
         <!-- Native / MJPEG feed (no MediaStream): drawn by the off-thread reader where the WebView
              allows it, otherwise the plain <img> multipart stream. -->
@@ -2749,6 +2753,18 @@
           ondblclick={() => setMapLocation('main')}
         ></video>
       {/if}
+      </div>
+      </div>
+      <!-- On-screen zoom buttons (for when there is no mouse wheel, e.g. touch). -->
+      <div class="map-zoom-ctl">
+        {#each VIDEO_ZOOM_LEVELS as z}
+          <button
+            class="map-zoom-btn"
+            class:active={$videoState.zoom === z}
+            onclick={() => setVideoZoom(z)}
+            title={$t('video.zoom') + ' ' + z + '×'}
+          >{z}×</button>
+        {/each}
       </div>
     </div>
   {/if}
@@ -3260,6 +3276,45 @@
      setting (see mapVideoBox). */
   .map-video-box {
     position: absolute;
+    overflow: hidden; /* a zoomed picture must not spill out of its box */
+  }
+  /* Carries the digital zoom/pan so it composes with the media's own mirror flip. */
+  .zoom-layer {
+    position: absolute;
+    inset: 0;
+    transform-origin: 50% 50%;
+  }
+  .map-zoom-ctl {
+    position: absolute;
+    /* Top-left: the bottom/right edges sit under the telemetry widgets and the nav rail's panels. */
+    left: 12px;
+    top: 12px;
+    display: flex;
+    gap: 2px;
+    z-index: 2;
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: 6px;
+    padding: 2px;
+  }
+  .map-zoom-btn {
+    min-width: 34px;
+    height: 26px;
+    padding: 0 6px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: #e0e0e0;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .map-zoom-btn:hover {
+    background: rgba(224, 48, 44, 0.5);
+    color: #fff;
+  }
+  .map-zoom-btn.active {
+    background: rgba(224, 48, 44, 0.85);
+    color: #fff;
   }
   /* width/height 100% of the box (not auto) so the replaced <video> stretches to it instead of using
      its intrinsic stream resolution; object-fit: fill because the box already has the right shape

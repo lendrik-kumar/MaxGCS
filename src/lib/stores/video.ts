@@ -120,6 +120,13 @@ export interface VideoState {
   mirror: boolean;
   /** Display ratio mode — see `DisplayRatio` / `resolveDisplayAspect`. Persisted. */
   displayRatio: DisplayRatio;
+  /** Digital zoom of the picture, one of `VIDEO_ZOOM_LEVELS`. One value for every video surface (panel
+   *  preview, floating window, full-screen view). Runtime-only: resets when video stops. */
+  zoom: number;
+  /** Pan of the zoomed picture as -1…1 of the available travel on each axis (0 = centred). Normalised
+   *  so the same pan reads correctly on surfaces of any size. */
+  panX: number;
+  panY: number;
   /** Source aspect ratio (w/h) of the raw pixels. Surfaces size themselves from the resolved
    *  display aspect (`videoDisplayAspect`), not from this directly. */
   aspect: number;
@@ -307,6 +314,9 @@ const INITIAL: VideoState = {
   activeTranscode: null,
   disableHwAccel: boot.disableHwAccel,
   displayRatio: boot.displayRatio,
+  zoom: 1,
+  panX: 0,
+  panY: 0,
   recording: false,
   recordingPath: null,
   mirror: boot.mirror,
@@ -1259,6 +1269,9 @@ export function stopVideo(): void {
     activeTranscode: null,
     reconnecting: false,
     reconnectAttempt: 0,
+    zoom: 1,
+    panX: 0,
+    panY: 0,
     recording: false,
     recordingPath: null,
   });
@@ -1459,6 +1472,52 @@ export function setDisplayRatio(displayRatio: DisplayRatio): void {
   patch({ displayRatio });
   savePrefs();
 }
+
+// ── Digital zoom ─────────────────────────────────────────────────────
+// A CSS scale+translate on a layer wrapped around the picture (see `.zoom-layer` in each surface), so
+// it costs nothing per frame and works the same for <video>, <img> and the off-thread <canvas>. It
+// magnifies the pixels the capture already has — it cannot add detail, so 4× on analog SD is soft — and
+// it is not the goggles' own (optical) camera zoom.
+export const VIDEO_ZOOM_LEVELS = [1, 2, 4] as const;
+
+const clampPan = (v: number) => Math.max(-1, Math.min(1, v));
+
+/** Set the zoom to the nearest preset. Back at 1× the pan is centred again. */
+export function setVideoZoom(zoom: number): void {
+  const level = VIDEO_ZOOM_LEVELS.reduce((best, l) => (Math.abs(l - zoom) < Math.abs(best - zoom) ? l : best));
+  patch(level === 1 ? { zoom: 1, panX: 0, panY: 0 } : { zoom: level });
+}
+
+/** One preset up (+1) or down (-1), stopping at the ends — mouse-wheel behaviour. */
+export function stepVideoZoom(dir: 1 | -1): void {
+  const i = VIDEO_ZOOM_LEVELS.indexOf(get(videoState).zoom as (typeof VIDEO_ZOOM_LEVELS)[number]);
+  const next = Math.max(0, Math.min(VIDEO_ZOOM_LEVELS.length - 1, (i < 0 ? 0 : i) + dir));
+  setVideoZoom(VIDEO_ZOOM_LEVELS[next]);
+}
+
+/** Next preset, wrapping 4× → 1× — the single-button control. */
+export function cycleVideoZoom(): void {
+  const i = VIDEO_ZOOM_LEVELS.indexOf(get(videoState).zoom as (typeof VIDEO_ZOOM_LEVELS)[number]);
+  setVideoZoom(VIDEO_ZOOM_LEVELS[((i < 0 ? 0 : i) + 1) % VIDEO_ZOOM_LEVELS.length]);
+}
+
+/** Pan by a fraction of the available travel (what a drag of `dx`/`dy` px works out to). No-op at 1×. */
+export function panVideoBy(dx: number, dy: number): void {
+  const s = get(videoState);
+  if (s.zoom <= 1) return;
+  patch({ panX: clampPan(s.panX + dx), panY: clampPan(s.panY + dy) });
+}
+
+/** CSS transform for a zoom/pan. `translate` percentages are relative to the layer's own size, so the
+ *  maximum shift that still keeps the picture covering the frame, (zoom − 1)/2 of the width, is
+ *  `(zoom − 1) × 50 %` — and the same value works on every surface. Empty string at 1×. */
+export function zoomTransform(zoom: number, panX: number, panY: number): string {
+  if (zoom <= 1) return '';
+  const k = (zoom - 1) * 50;
+  return `translate(${(panX * k).toFixed(3)}%, ${(panY * k).toFixed(3)}%) scale(${zoom})`;
+}
+
+export const videoZoomTransform = derived(videoState, (s) => zoomTransform(s.zoom, s.panX, s.panY));
 
 /** Force the software transcode regardless of what the backend's hardware probe found. Restarts a
  *  live RTSP feed so the change takes effect immediately — the decision is made when the source is

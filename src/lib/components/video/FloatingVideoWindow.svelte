@@ -10,7 +10,8 @@
   //  • drag the video body to move (away from the corner un-snaps; dropping near the corner re-snaps)
   //  • TOP-RIGHT corner grip resizes (aspect-locked, 10–80 % of vh, touch-friendly)
   //  • TOP-LEFT ✕ closes (swaps back first if it was primary); next to it, ⤢ toggles between the
-  //    current size and the largest that fits (for a TV / big display), and ⇄ swaps with the map
+  //    current size and the largest that fits (for a TV / big display), ⇄ swaps with the map, and the
+  //    "N×" button cycles the digital zoom 1× → 2× → 4× (the mouse wheel steps it too)
   //  • double-click the video to swap it with the map (→ videoPrimary) — same as the ⇄ button
   //
   // No title bar (space is precious on a flight display). Layering: separate absolutely-positioned
@@ -32,6 +33,8 @@
     setMapLocation,
     toggleFloating,
     toggleFloatExpanded,
+    cycleVideoZoom,
+    videoZoomTransform,
     isFloatExpanded,
     clampFloatFrac,
     floatWindowSize,
@@ -42,6 +45,7 @@
     reportMjpegError,
   } from '$lib/stores/video';
   import { canvasSink, mjpegSink } from '$lib/controllers/mjpegSink';
+  import { videoZoom } from '$lib/controllers/videoZoom';
   import VideoReconnectOverlay from '$lib/components/video/VideoReconnectOverlay.svelte';
 
   // The page's UI scale (1 = 100 %). This window sits inside the `.ui-scale` layer, which is scaled up
@@ -299,19 +303,29 @@
          instead, and the body is omitted. Double-click the video → the map jumps into this frame. -->
     {#if !mapHere}
       <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div class="fw-body" onpointerdown={onBodyPointerDown} ondblclick={() => setMapLocation('floating')}>
+      <!-- Wheel steps the zoom. No drag-to-pan here: dragging the body moves this window. -->
+      <div
+        class="fw-body"
+        onpointerdown={onBodyPointerDown}
+        ondblclick={() => setMapLocation('floating')}
+        use:videoZoom={{ wheel: true, pan: false }}
+      >
         {#if $videoState.status === 'live' && $videoState.mjpegUrl}
           <!-- Native / MJPEG feed (no MediaStream): drawn by the off-thread reader where the WebView
                allows it, otherwise the plain <img> multipart stream. -->
-          {#if $canvasSink}
-            <canvas use:mjpegSink class:mirror={$videoState.mirror}></canvas>
-          {:else}
-            <!-- svelte-ignore a11y_missing_attribute -->
-            <img src={$videoState.mjpegUrl} class:mirror={$videoState.mirror} onerror={reportMjpegError} />
-          {/if}
+          <div class="zoom-layer" style:transform={$videoZoomTransform}>
+            {#if $canvasSink}
+              <canvas use:mjpegSink class:mirror={$videoState.mirror}></canvas>
+            {:else}
+              <!-- svelte-ignore a11y_missing_attribute -->
+              <img src={$videoState.mjpegUrl} class:mirror={$videoState.mirror} onerror={reportMjpegError} />
+            {/if}
+          </div>
         {:else if $videoState.status === 'live'}
-          <!-- svelte-ignore a11y_media_has_caption -->
-          <video bind:this={videoEl} autoplay muted playsinline class:mirror={$videoState.mirror}></video>
+          <div class="zoom-layer" style:transform={$videoZoomTransform}>
+            <!-- svelte-ignore a11y_media_has_caption -->
+            <video bind:this={videoEl} autoplay muted playsinline class:mirror={$videoState.mirror}></video>
+          </div>
         {:else}
           <div class="fw-ph">{$videoState.status === 'starting' ? $t('video.starting') : $t('video.off')}</div>
         {/if}
@@ -352,6 +366,14 @@
             <path d="M7 7h13M16 3l4 4-4 4M17 17H4M8 13l-4 4 4 4" />
           </svg>
         </button>
+        <!-- digital zoom — cycles 1× → 2× → 4× (the mouse wheel steps it too) -->
+        <button
+          class="fw-corner fw-btn fw-zoom"
+          class:active={$videoState.zoom > 1}
+          onclick={cycleVideoZoom}
+          title={$t('video.zoomCycle', { values: { n: $videoState.zoom } })}
+          aria-label={$t('video.zoomCycle', { values: { n: $videoState.zoom } })}
+        >{$videoState.zoom}×</button>
       {/if}
 
       <!-- resize grip (top-right) — visible, touch-sized -->
@@ -473,7 +495,22 @@
   }
   .fw-swap {
     left: 52px;
+  }
+  .fw-zoom {
+    left: 78px;
     border-radius: 0 0 8px 0;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+  }
+  .fw-zoom.active {
+    color: var(--mx-red, #e0302c);
+  }
+  /* Carries the digital zoom/pan so it composes with the media's own mirror flip. */
+  .zoom-layer {
+    position: absolute;
+    inset: 0;
+    transform-origin: 50% 50%;
   }
   .fw-resize {
     right: 0;

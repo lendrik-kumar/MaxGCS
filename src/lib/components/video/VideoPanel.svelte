@@ -26,6 +26,9 @@
     setVideoMirror,
     setDisplayRatio,
     videoDisplayAspect,
+    setVideoZoom,
+    videoZoomTransform,
+    VIDEO_ZOOM_LEVELS,
     type DisplayRatio,
     setDisableHwAccel,
     setVideoKind,
@@ -52,6 +55,8 @@
     setNativeRecording,
   } from '$lib/stores/video';
   import { canvasSink, mjpegSink, mjpegStats } from '$lib/controllers/mjpegSink';
+  import { videoZoom } from '$lib/controllers/videoZoom';
+  import SegmentedToggle from '$lib/components/panel/SegmentedToggle.svelte';
   import {
     codecsFor,
     codecLabel,
@@ -64,6 +69,8 @@
   import Toggle from '$lib/components/panel/Toggle.svelte';
   import { isLinux } from '$lib/platform';
   import VideoReconnectOverlay from '$lib/components/video/VideoReconnectOverlay.svelte';
+
+  const zoomOptions = VIDEO_ZOOM_LEVELS.map((z) => ({ value: String(z), label: `${z}×` }));
 
   let videoEl = $state<HTMLVideoElement | null>(null);
   // Which saved RTSP connection is being edited inline (null = none).
@@ -352,7 +359,9 @@
 
 {#snippet body()}
   <div class="vp-body">
-    <div class="preview" style="aspect-ratio: {$videoDisplayAspect};">
+    <!-- Drag pans the zoomed picture; the wheel is left alone here so it keeps scrolling the panel. -->
+    <div class="preview" style="aspect-ratio: {$videoDisplayAspect};" use:videoZoom={{ pan: true, wheel: false }}>
+      <div class="zoom-layer" style:transform={$videoZoomTransform}>
       {#if $videoState.mjpegUrl}
         <!-- MJPEG multipart feed — off-thread reader where the WebView allows it, else an <img>
              whose per-part `load` carries both the frame count and the picture size. -->
@@ -384,6 +393,7 @@
           onwaiting={() => console.warn('[video] waiting/buffering')}
         ></video>
       {/if}
+      </div>
       {#if $videoState.status !== 'live' && !$videoState.mjpegUrl}
         <div class="preview-placeholder">
           {#if $videoState.status === 'starting'}
@@ -397,6 +407,19 @@
       {/if}
       <VideoReconnectOverlay />
     </div>
+
+    <div class="zoom-row">
+      <span class="label">{$t('video.zoom')}</span>
+      <SegmentedToggle
+        size="sm"
+        options={zoomOptions}
+        value={String($videoState.zoom)}
+        onchange={(v) => setVideoZoom(Number(v))}
+      />
+    </div>
+    {#if $videoState.zoom > 1}
+      <p class="hint">{$t('video.zoomHint')}</p>
+    {/if}
 
     {#if $videoState.status === 'live'}
       <div class="info-line">
@@ -758,6 +781,10 @@
     align-items: center;
     justify-content: center;
   }
+  /* Carries the digital zoom/pan (transform set inline from videoZoomTransform) so it composes with the
+     media's own mirror flip instead of fighting it. */
+  .zoom-layer { position: absolute; inset: 0; transform-origin: 50% 50%; }
+  .zoom-row { display: flex; align-items: center; gap: 8px; }
   /* will-change: own compositing layer — see VideoWidget: keeps the 60 fps MJPEG <img> from
      dirtying shared layer tiles every frame on WebKitGTK. */
   /* `fill`: the box is already the display shape (aspect-ratio above), so this shows the whole picture

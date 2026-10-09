@@ -670,7 +670,10 @@
     "displayRatio": "Format d'image",
     "ratioAuto": "Auto (selon la source)",
     "ratioFill": "Étirer pour remplir",
-    "displayRatioHint": "Auto affiche la vidéo analogique des lunettes (480p/576p) en vrai 4:3 et tout le reste dans son propre format. Choisissez 4:3 ou 16:9 pour en forcer un. « Étirer pour remplir » couvre toute la vue plein écran sans bandes noires — pratique sur une TV."
+    "displayRatioHint": "Auto affiche la vidéo analogique des lunettes (480p/576p) en vrai 4:3 et tout le reste dans son propre format. Choisissez 4:3 ou 16:9 pour en forcer un. « Étirer pour remplir » couvre toute la vue plein écran sans bandes noires — pratique sur une TV.",
+    "zoom": "Zoom",
+    "zoomHint": "Faites glisser l'image pour la déplacer. Sur la vidéo flottante ou plein écran, la molette change le zoom. C'est un zoom numérique : il agrandit ce que la capture contient, sans ajouter de détails.",
+    "zoomCycle": "Zoom {n}× — cliquer pour changer"
   },
   "recordings": {
     "title": "Enregistrements",
