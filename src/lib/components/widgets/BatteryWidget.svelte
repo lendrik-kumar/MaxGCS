@@ -3,7 +3,7 @@
   Copyright (C) 2026 Marc Hoffmann (b14ckyy)
 -->
 
-<!-- Battery widget — voltage bar, voltage, current + power, mAh. Multi-battery aware (ArduPilot/PX4):
+<!-- Battery widget — voltage bar, voltage, power. Multi-battery aware (ArduPilot/PX4):
      shows one monitor instance with an AUTO selector (highest current draw, with a low-battery safety
      override) and manual pinning. Single-battery setups (INAV) show the one battery. See
      docs/active/MULTI_BATTERY.md. -->
@@ -106,13 +106,7 @@
   let pct = $derived(shown ? Math.max(0, Math.min(100, shown.percentage)) : 0);
   let barColor = $derived(pct >= 50 ? '#27ae60' : pct >= 20 ? '#f39c12' : '#e74c3c');
   let voltage = $derived(shown ? `${shown.voltage.toFixed(1)}V` : '—V');
-  let current = $derived(
-    shown
-      ? `${Math.abs(shown.current) >= 100 ? shown.current.toFixed(0) : shown.current.toFixed(1)}A`
-      : '—A'
-  );
   let watt = $derived(shown ? `${Math.round(shown.voltage * shown.current)}W` : '—W');
-  let mah = $derived(shown ? `${shown.mahDrawn} mAh` : '—');
   // Alert state: shown pack below the configured threshold.
   let alert = $derived(!!shown && shown.percentage > 0 && alertPct > 0 && shown.percentage < alertPct);
   // Mode chip: in AUTO show the auto-selected pack number too (so you know which is shown); when
@@ -139,10 +133,8 @@
   <span class="w-value">{voltage}</span>
   {#if $settings.batteryShowDetails}
     <div class="w-secondary-row">
-      <span class="w-secondary">{current}</span>
       <span class="w-secondary">{watt}</span>
     </div>
-    <span class="w-tertiary">{mah}</span>
   {/if}
 </div>
 
@@ -228,12 +220,6 @@
     color: #ccc;
     font-variant-numeric: tabular-nums;
   }
-  .w-tertiary {
-    font-size: calc(var(--ws) * 0.11);
-    color: #888;
-    font-variant-numeric: tabular-nums;
-  }
-
   /* Battery bar */
   .bat-bar-track {
     width: 88%;

@@ -43,8 +43,6 @@
     <div class="rt-row"><span class="rtk">ROL</span><span class="rtv">{telem.roll.toFixed(1)}°</span></div>
     <div class="rt-row"><span class="rtk">PIT</span><span class="rtv">{telem.pitch.toFixed(1)}°</span></div>
     <div class="rt-row"><span class="rtk">BAT</span><span class="rtv">{telem.voltage.toFixed(1)}V</span></div>
-    <div class="rt-row"><span class="rtk">CUR</span><span class="rtv">{telem.current.toFixed(1)}A</span></div>
-    <div class="rt-row"><span class="rtk">MAH</span><span class="rtv">{telem.mAhDrawn}</span></div>
     <div class="rt-row"><span class="rtk">SAT</span><span class="rtv">{telem.numSat} {getGpsFixLabel()}</span></div>
     <div class="rt-row"><span class="rtk">RSSI</span><span class="rtv">{telem.rssi}</span></div>
   {:else}

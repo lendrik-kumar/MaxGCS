@@ -5,7 +5,7 @@
 
 <!-- Toolbar battery indicator (right of the sensor bar): the primary battery (instance 0). When the FC
      reports a native charge % the glyph fills by it and the % is shown; otherwise the voltage is shown
-     (no guessed %). Voltage / cell count / mAh drawn on hover. -->
+     (no guessed %). Voltage / cell count on hover. -->
 <script lang="ts">
   import type { TelemetryData } from '$lib/stores/telemetry';
   import { batteryLevel, batteryColor } from '$lib/helpers/battery';
@@ -17,7 +17,7 @@
   const fillW = $derived(pct != null ? (16 * pct) / 100 : 0);
   const color = $derived(pct != null ? batteryColor(pct) : '#cfcfcf');
   const tooltip = $derived(
-    batt ? `${batt.voltage.toFixed(1)} V · ${batt.cells}S · ${Math.round(batt.mAhDrawn)} mAh` : '',
+    batt ? `${batt.voltage.toFixed(1)} V · ${batt.cells}S` : '',
   );
 </script>
 
