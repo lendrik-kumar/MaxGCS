@@ -669,7 +669,6 @@
       "surface": "Surface",
       "copy": "Copy"
     },
-    "zoom": "Digital zoom",
     "mirror": "Mirror horizontally",
     "codec": "Codec",
     "floatingWindow": "Floating window",
@@ -691,7 +690,18 @@
     "record": "Record (enhanced)",
     "recordHint": "Native capture only. Saves a denoised, sharpened, colour-corrected copy to disk — the live view is unaffected. Starting/stopping briefly restarts the feed.",
     "recordingTo": "Recording to {path}",
-    "genericDeviceLabel": "Secure Comm {n}"
+    "genericDeviceLabel": "Secure Comm {n}",
+    "expandWindow": "Expand window",
+    "restoreWindow": "Restore window size",
+    "swapWithMap": "Swap with map",
+    "displayRatio": "Display ratio",
+    "ratioAuto": "Auto (match the source)",
+    "ratioFill": "Stretch to fill",
+    "displayRatioHint": "Auto shows analog goggle video (480p/576p) at its true 4:3 and everything else at its own shape. Pick 4:3 or 16:9 to force one. Stretch to fill covers the whole full-screen view with no black bars — handy on a TV.",
+    "zoom": "Zoom",
+    "zoomHint": "Drag the picture to pan, or swipe sideways / Shift + wheel. Over the floating or full-screen video the mouse wheel changes the zoom. In the floating window, drag the bar along its top edge to move the window. This is digital zoom — it enlarges what the capture has, it can't add detail.",
+    "zoomCycle": "Zoom {n}× — click to change",
+    "moveWindow": "Drag to move the window"
   },
   "recordings": {
     "title": "Recordings",

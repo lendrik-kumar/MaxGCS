@@ -15,7 +15,7 @@
   // tile underneath it.
   import { t } from 'svelte-i18n';
   import { onMount, onDestroy } from 'svelte';
-  import { videoStream, videoState, bindVideoEl, videoZoom, zoomVideoWheel, setMapLocation, setWidgetRect, reportMjpegError } from '$lib/stores/video';
+  import { videoStream, videoState, bindVideoEl, setMapLocation, setWidgetRect, reportMjpegError } from '$lib/stores/video';
   import { canvasSink, mjpegSink } from '$lib/controllers/mjpegSink';
   import VideoReconnectOverlay from '$lib/components/video/VideoReconnectOverlay.svelte';
 
@@ -69,7 +69,7 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
-<div bind:this={cardEl} class="widget-card" style="width:{width}px; height:{height}px; --vz: {$videoZoom};" onwheel={zoomVideoWheel} ondblclick={swapHere}>
+<div bind:this={cardEl} class="widget-card" style="width:{width}px; height:{height}px;" ondblclick={swapHere}>
   {#if mapHere}
     <!-- The map is overlaid here by +page (top-level). Keep an empty sized tile underneath. -->
     <div class="placeholder map-here"></div>
@@ -131,7 +131,6 @@
        layer anyway, the MJPEG <img> does NOT unless promoted). */
     will-change: transform;
   }
-  video, img, canvas { scale: var(--vz, 1); }
   video.mirror,
   img.mirror,
   canvas.mirror {

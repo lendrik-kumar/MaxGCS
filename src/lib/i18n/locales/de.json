@@ -669,7 +669,6 @@
       "surface": "Darstellung",
       "copy": "Direkt"
     },
-    "zoom": "Digitaler Zoom",
     "mirror": "Horizontal spiegeln",
     "codec": "Codec",
     "floatingWindow": "Schwebendes Fenster",
@@ -691,7 +690,18 @@
     "record": "Aufnehmen (verbessert)",
     "recordHint": "Nur native Capture. Speichert eine entrauschte, geschärfte, farbkorrigierte Kopie auf der Festplatte — die Live-Ansicht bleibt unverändert. Start/Stopp startet den Feed kurz neu.",
     "recordingTo": "Aufnahme nach {path}",
-    "genericDeviceLabel": "Sichere Verbindung {n}"
+    "genericDeviceLabel": "Sichere Verbindung {n}",
+    "expandWindow": "Fenster vergrößern",
+    "restoreWindow": "Fenstergröße zurücksetzen",
+    "swapWithMap": "Mit Karte tauschen",
+    "displayRatio": "Bildformat",
+    "ratioAuto": "Auto (wie die Quelle)",
+    "ratioFill": "Auf Vollbild strecken",
+    "displayRatioHint": "Auto zeigt analoge Brillen-Videos (480p/576p) im echten 4:3 und alles andere in seinem eigenen Format. 4:3 oder 16:9 erzwingt ein Format. „Auf Vollbild strecken“ füllt die ganze Vollbildansicht ohne schwarze Ränder — praktisch am Fernseher.",
+    "zoom": "Zoom",
+    "zoomHint": "Bild ziehen zum Verschieben, oder seitlich wischen / Umschalt + Mausrad. Über dem schwebenden oder Vollbild-Video ändert das Mausrad den Zoom. Im schwebenden Fenster verschiebt man das Fenster über die Leiste am oberen Rand. Das ist digitaler Zoom: er vergrößert, was die Aufnahme enthält, und fügt keine Details hinzu.",
+    "zoomCycle": "Zoom {n}× — zum Ändern klicken",
+    "moveWindow": "Ziehen, um das Fenster zu verschieben"
   },
   "recordings": {
     "title": "Aufnahmen",

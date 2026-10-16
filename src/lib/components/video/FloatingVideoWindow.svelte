@@ -8,10 +8,11 @@
   //  • snaps to the bottom-left corner (above the status bar; the bottom widget dock reflows out of
   //    the way — handled in +page.svelte) or floats freely
   //  • drag the video body to move (away from the corner un-snaps; dropping near the corner re-snaps)
-  //  • TOP-RIGHT corner grip resizes (aspect-locked, 10–85 % of vh, touch-friendly); the Video
-  //    panel also offers one-click size presets
-  //  • TOP-LEFT ✕ closes (swaps back first if it was primary)
-  //  • double-click the video to swap it with the map (→ videoPrimary)
+  //  • TOP-RIGHT corner grip resizes (aspect-locked, 10–80 % of vh, touch-friendly)
+  //  • TOP-LEFT ✕ closes (swaps back first if it was primary); next to it, ⤢ maximizes the window to
+  //    the whole content area (for a TV / big display; Esc or ⤡ restores it), ⇄ swaps with the map, and the
+  //    "N×" button cycles the digital zoom 1× → 2× → 4× (the mouse wheel steps it too)
+  //  • double-click the video to swap it with the map (→ videoPrimary) — same as the ⇄ button
   //
   // No title bar (space is precious on a flight display). Layering: separate absolutely-positioned
   // layers share the page stacking context (the .float-win wrapper has no z-index). The map (rendered
@@ -24,26 +25,44 @@
   import {
     videoStream,
     videoState,
+    videoDisplayAspect,
     bindVideoEl,
     setFloatPos,
     setFloatSnapped,
     setFloatHeightFrac,
     setMapLocation,
     toggleFloating,
+    toggleFloatFull,
+    floatFullRect,
+    fitContain,
+    cycleVideoZoom,
+    videoZoomTransform,
+    clampFloatFrac,
+    floatWindowSize,
+    clampFloatPos,
+    FLOAT_SNAP_BOTTOM,
+    FLOAT_TOP_SAFE,
+    FLOAT_EDGE,
     reportMjpegError,
-    videoZoom,
-    zoomVideoWheel,
     FLOAT_HEIGHT_MIN,
     FLOAT_HEIGHT_MAX,
   } from '$lib/stores/video';
   import { canvasSink, mjpegSink } from '$lib/controllers/mjpegSink';
+  import { videoZoom } from '$lib/controllers/videoZoom';
   import VideoReconnectOverlay from '$lib/components/video/VideoReconnectOverlay.svelte';
+
+  // The page's UI scale (1 = 100 %). This window sits inside the `.ui-scale` layer, which is scaled up
+  // with a CSS transform, so its coordinates are logical px: the logical viewport is the real one
+  // divided by the scale. Without this a large window would overflow a scaled-up (TV) display.
+  let { uiScale = 1 }: { uiScale?: number } = $props();
 
   // True while the map occupies this floating frame (so this window shows the map, not video).
   const mapHere = $derived($videoState.mapLocation === 'floating');
 
   let vw = $state(typeof window !== 'undefined' ? window.innerWidth : 1280);
   let vh = $state(typeof window !== 'undefined' ? window.innerHeight : 720);
+  const lvw = $derived(vw / uiScale);
+  const lvh = $derived(vh / uiScale);
 
   let videoEl = $state<HTMLVideoElement | null>(null);
   $effect(() => {
@@ -51,41 +70,38 @@
   });
 
   const MARGIN = 8;
-  const SNAP_BOTTOM = 30; // align the snapped bottom with the widgets (above the 24px status bar)
   const SNAP_THRESHOLD = 56;
-  const FRAC_MIN = FLOAT_HEIGHT_MIN;
-  const FRAC_MAX = FLOAT_HEIGHT_MAX;
-  // Floor the height so the mini-map's 4 stacked control buttons (4×38 + 3×8 gap + 8 bottom offset +
-  // breathing room) never overflow the frame in videoPrimary mode.
-  const MIN_H_PX = 200;
-  /** Width ceiling as a fraction of the viewport, so a wide feed still leaves the map visible. */
-  const WIDTH_FRAC_MAX = 0.9;
 
   let floatWinEl = $state<HTMLDivElement | null>(null);
 
-  const aspect = $derived($videoState.aspect || 16 / 9);
-
-  // Size is derived height-first from the stored fraction, then shrunk to fit the width ceiling —
-  // and crucially the height follows that shrink, so the frame keeps the feed's aspect ratio at
-  // every size. The content is `object-fit: cover`, so a frame wider or taller than the source
-  // aspect crops the picture rather than letterboxing it; before the width ceiling fed back into
-  // the height, growing the window past it quietly cropped the sides.
-  const size = $derived.by(() => {
-    const maxH = FRAC_MAX * vh;
-    const minH = Math.min(MIN_H_PX, maxH); // a very short viewport must still produce a valid box
-    let h = Math.min(maxH, Math.max(minH, $videoState.floatHeightFrac * vh));
-    let w = h * aspect;
-    const maxW = vw * WIDTH_FRAC_MAX;
-    if (w > maxW) {
-      w = maxW;
-      h = Math.max(minH, w / aspect);
-    }
-    return { width: Math.round(w), height: Math.round(h) };
-  });
-  const height = $derived(size.height);
-  const width = $derived(size.width);
-  const left = $derived($videoState.floatSnapped ? MARGIN : $videoState.floatX);
-  const top = $derived($videoState.floatSnapped ? vh - height - SNAP_BOTTOM : $videoState.floatY);
+  // The resolved display shape (the Display ratio setting + analog-SD correction), not the raw pixel
+  // ratio — the picture below is stretched to exactly this shape.
+  const aspect = $derived($videoDisplayAspect);
+  // Size/limits live in the video store (floatWindowSize) so +page's map-in-frame overlay, which has to
+  // line up with this window exactly, uses the very same numbers.
+  const full = $derived($videoState.floatFull);
+  const fullRect = $derived(floatFullRect(lvw, lvh));
+  const size = $derived(
+    full ? { w: fullRect.w, h: fullRect.h } : floatWindowSize($videoState.floatHeightFrac, aspect, lvw, lvh),
+  );
+  const height = $derived(size.h);
+  const width = $derived(size.w);
+  const freePos = $derived(clampFloatPos($videoState.floatX, $videoState.floatY, width, height, lvw, lvh));
+  const left = $derived(full ? fullRect.x : $videoState.floatSnapped ? MARGIN : freePos.x);
+  const top = $derived(full ? fullRect.y : $videoState.floatSnapped ? lvh - height - FLOAT_SNAP_BOTTOM : freePos.y);
+  const expanded = $derived(full);
+  // Maximized, the window is the whole content area, which is rarely the picture's shape: the picture
+  // is fitted inside it (black bars on the sides) — or fills it all when the ratio is "Stretch to fill".
+  const pic = $derived(
+    full && $videoState.displayRatio !== 'fill' ? fitContain(aspect, width, height) : null,
+  );
+  const picStyle = $derived(
+    pic
+      ? `inset:auto; left:${Math.round((width - pic.w) / 2)}px; top:${Math.round((height - pic.h) / 2)}px; width:${pic.w}px; height:${pic.h}px;`
+      : '',
+  );
+  // The extra buttons sit beside the ✕; skip them on a window too narrow to fit them clear of the grip.
+  const showExtraButtons = $derived(width >= 130);
 
   // This ✕ only shows while the window holds video → it closes the floating window. (When the map is
   // in the frame, +page renders its own ✕ on top that sends the map back to the main view instead.)
@@ -103,6 +119,10 @@
 
   function onBodyPointerDown(e: PointerEvent) {
     if ((e.target as HTMLElement).closest('.fw-corner')) return; // let the corner controls handle it
+    // Zoomed in: a drag on the picture pans it (videoZoom action on the body). The window is then moved
+    // by its top move bar (`.fw-move`, which calls this same handler).
+    if ($videoState.zoom > 1 && (e.currentTarget as HTMLElement).classList.contains('fw-body')) return;
+    if (full) return; // maximized: nothing to move
     pendingDrag = true;
     moved = false;
     startX = e.clientX;
@@ -114,15 +134,18 @@
   }
   function onDragMove(e: PointerEvent) {
     if (!pendingDrag) return;
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
+    // Pointer deltas are real px; the window's coordinates are logical (÷ uiScale).
+    const dx = (e.clientX - startX) / uiScale;
+    const dy = (e.clientY - startY) / uiScale;
     if (!moved && Math.hypot(dx, dy) < 4) return;
     if (!moved) {
       moved = true;
       setFloatSnapped(false); // first real movement detaches from the corner
     }
-    const nx = Math.max(0, Math.min(baseLeft + dx, vw - width));
-    const ny = Math.max(0, Math.min(baseTop + dy, vh - height));
+    // Kept clear of the screen edges (the app window's resize strips) and of the toolbar (the title-bar
+    // drag/maximize area) — see FLOAT_EDGE / FLOAT_TOP_SAFE.
+    const nx = Math.max(FLOAT_EDGE, Math.min(baseLeft + dx, lvw - width - FLOAT_EDGE));
+    const ny = Math.max(FLOAT_TOP_SAFE, Math.min(baseTop + dy, lvh - height - FLOAT_EDGE));
     setFloatPos(nx, ny);
   }
   function onDragUp() {
@@ -133,7 +156,7 @@
     if (!moved) return;
     // Re-snap if dropped near the bottom-left corner.
     const nearLeft = $videoState.floatX <= MARGIN + SNAP_THRESHOLD;
-    const nearBottom = $videoState.floatY + height >= vh - SNAP_BOTTOM - SNAP_THRESHOLD;
+    const nearBottom = $videoState.floatY + height >= lvh - FLOAT_SNAP_BOTTOM - SNAP_THRESHOLD;
     if (nearLeft && nearBottom) setFloatSnapped(true);
   }
 
@@ -147,6 +170,7 @@
   let startSnapped = false;
   function onResizePointerDown(e: PointerEvent) {
     e.stopPropagation();
+    if (full) return;
     resizing = true;
     resizeStartY = e.clientY;
     startFrac = $videoState.floatHeightFrac;
@@ -157,13 +181,18 @@
   }
   function onResizeMove(e: PointerEvent) {
     if (!resizing) return;
-    const delta = (resizeStartY - e.clientY) / vh; // drag up → larger
-    const fracMin = Math.max(FRAC_MIN, MIN_H_PX / vh); // honour the 4-button px floor
-    const newFrac = Math.min(FRAC_MAX, Math.max(fracMin, startFrac + delta));
+    const delta = (resizeStartY - e.clientY) / vh; // drag up → larger (a fraction of the screen height)
+    // Clamped to the px floor (4 mini-map buttons) and to what fits below the toolbar.
+    const newFrac = clampFloatFrac(startFrac + delta, lvh);
     setFloatHeightFrac(newFrac);
     if (!startSnapped) {
-      // Keep the bottom edge fixed (top-right grip): top = bottom − newHeight.
-      setFloatPos($videoState.floatX, startBottom - newFrac * vh);
+      // Keep the bottom edge fixed (top-right grip): top = bottom − newHeight, but never under the
+      // toolbar, and pull the window back in if growing pushed its right edge off-screen.
+      const next = floatWindowSize(newFrac, aspect, lvw, lvh);
+      setFloatPos(
+        Math.max(FLOAT_EDGE, Math.min($videoState.floatX, lvw - next.w - FLOAT_EDGE)),
+        Math.max(FLOAT_TOP_SAFE, startBottom - next.h),
+      );
     }
   }
   function onResizeUp() {
@@ -198,16 +227,16 @@
   }
   function frameMoveTo(cx: number, cy: number) {
     if (!fmActive) return;
-    const dx = cx - fmStartX;
-    const dy = cy - fmStartY;
+    const dx = (cx - fmStartX) / uiScale;
+    const dy = (cy - fmStartY) / uiScale;
     if (!fmMoved && Math.hypot(dx, dy) < 4) return;
     if (!fmMoved) {
       fmMoved = true;
       setFloatSnapped(false);
     }
     setFloatPos(
-      Math.max(0, Math.min(fmBaseLeft + dx, vw - width)),
-      Math.max(0, Math.min(fmBaseTop + dy, vh - height)),
+      Math.max(FLOAT_EDGE, Math.min(fmBaseLeft + dx, lvw - width - FLOAT_EDGE)),
+      Math.max(FLOAT_TOP_SAFE, Math.min(fmBaseTop + dy, lvh - height - FLOAT_EDGE)),
     );
   }
   function frameMoveEnd() {
@@ -215,7 +244,7 @@
     fmActive = false;
     if (!fmMoved) return;
     const nearLeft = $videoState.floatX <= MARGIN + SNAP_THRESHOLD;
-    const nearBottom = $videoState.floatY + height >= vh - SNAP_BOTTOM - SNAP_THRESHOLD;
+    const nearBottom = $videoState.floatY + height >= lvh - FLOAT_SNAP_BOTTOM - SNAP_THRESHOLD;
     if (nearLeft && nearBottom) setFloatSnapped(true);
   }
 
@@ -284,31 +313,49 @@
   });
 </script>
 
-<svelte:window bind:innerWidth={vw} bind:innerHeight={vh} />
+<svelte:window
+  bind:innerWidth={vw}
+  bind:innerHeight={vh}
+  onkeydown={(e) => {
+    if (e.key === 'Escape' && full && $videoState.floating) toggleFloatFull();
+  }}
+/>
 
 {#if $videoState.floating}
   <!-- No z-index on the wrapper → no stacking context; layers compose with the top-level map. -->
   <div bind:this={floatWinEl} class="float-win" style="left:{left}px; top:{top}px; width:{width}px; height:{height}px;">
     <!-- frame background (behind) — border + shadow only; the video/map covers it (object-fit: cover) -->
-    <div class="fw-bg"></div>
+    <div class="fw-bg" class:fw-bg-full={full}></div>
 
     <!-- content: the video. When the map is in this frame, it's rendered (top-level) by +page here
          instead, and the body is omitted. Double-click the video → the map jumps into this frame. -->
     {#if !mapHere}
       <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div class="fw-body" style="--vz: {$videoZoom};" onpointerdown={onBodyPointerDown} onwheel={zoomVideoWheel} ondblclick={() => setMapLocation('floating')}>
+      <!-- Wheel steps the zoom; sideways scroll and dragging pan the zoomed picture. At 1× a drag on the
+           body still moves the window; zoomed, the window moves by its top bar instead (.fw-move). -->
+      <div
+        class="fw-body"
+        class:fw-full={full}
+        onpointerdown={onBodyPointerDown}
+        ondblclick={() => setMapLocation('floating')}
+        use:videoZoom={{ wheel: true, pan: true }}
+      >
         {#if $videoState.status === 'live' && $videoState.mjpegUrl}
           <!-- Native / MJPEG feed (no MediaStream): drawn by the off-thread reader where the WebView
                allows it, otherwise the plain <img> multipart stream. -->
-          {#if $canvasSink}
-            <canvas use:mjpegSink class:mirror={$videoState.mirror}></canvas>
-          {:else}
-            <!-- svelte-ignore a11y_missing_attribute -->
-            <img src={$videoState.mjpegUrl} class:mirror={$videoState.mirror} onerror={reportMjpegError} />
-          {/if}
+          <div class="zoom-layer" style={picStyle} style:transform={$videoZoomTransform}>
+            {#if $canvasSink}
+              <canvas use:mjpegSink class:mirror={$videoState.mirror}></canvas>
+            {:else}
+              <!-- svelte-ignore a11y_missing_attribute -->
+              <img src={$videoState.mjpegUrl} class:mirror={$videoState.mirror} onerror={reportMjpegError} />
+            {/if}
+          </div>
         {:else if $videoState.status === 'live'}
-          <!-- svelte-ignore a11y_media_has_caption -->
-          <video bind:this={videoEl} autoplay muted playsinline class:mirror={$videoState.mirror}></video>
+          <div class="zoom-layer" style={picStyle} style:transform={$videoZoomTransform}>
+            <!-- svelte-ignore a11y_media_has_caption -->
+            <video bind:this={videoEl} autoplay muted playsinline class:mirror={$videoState.mirror}></video>
+          </div>
         {:else}
           <div class="fw-ph">{$videoState.status === 'starting' ? $t('video.starting') : $t('video.off')}</div>
         {/if}
@@ -322,9 +369,62 @@
       <!-- close (top-left) — overlay, touch-sized -->
       <button class="fw-corner fw-close" onclick={closeWindow} title={$t('video.close')}>✕</button>
 
+      {#if showExtraButtons}
+        <!-- expand / restore — toggles between the current size and the largest that fits -->
+        <button
+          class="fw-corner fw-btn fw-expand"
+          onclick={toggleFloatFull}
+          title={expanded ? $t('video.restoreWindow') : $t('video.expandWindow')}
+          aria-label={expanded ? $t('video.restoreWindow') : $t('video.expandWindow')}
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            {#if expanded}
+              <path d="M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7" />
+            {:else}
+              <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" />
+            {/if}
+          </svg>
+        </button>
+        <!-- swap with the map (same as double-clicking the video) -->
+        <button
+          class="fw-corner fw-btn fw-swap"
+          onclick={() => setMapLocation('floating')}
+          title={$t('video.swapWithMap')}
+          aria-label={$t('video.swapWithMap')}
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M7 7h13M16 3l4 4-4 4M17 17H4M8 13l-4 4 4 4" />
+          </svg>
+        </button>
+        <!-- digital zoom — cycles 1× → 2× → 4× (the mouse wheel steps it too) -->
+        <button
+          class="fw-corner fw-btn fw-zoom"
+          class:active={$videoState.zoom > 1}
+          onclick={cycleVideoZoom}
+          title={$t('video.zoomCycle', { values: { n: $videoState.zoom } })}
+          aria-label={$t('video.zoomCycle', { values: { n: $videoState.zoom } })}
+        >{$videoState.zoom}×</button>
+      {/if}
+
+      <!-- Move bar — only while zoomed (dragging the picture pans it then, so the window needs its own
+           handle). Sits between the button strip and the resize grip. -->
+      {#if $videoState.zoom > 1 && !full}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+          class="fw-move"
+          style="left:{showExtraButtons ? 104 : 26}px;"
+          onpointerdown={onBodyPointerDown}
+          title={$t('video.moveWindow')}
+        >
+          <span class="fw-move-grip" aria-hidden="true"></span>
+        </div>
+      {/if}
+
       <!-- resize grip (top-right) — visible, touch-sized -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div class="fw-corner fw-resize" onpointerdown={onResizePointerDown} title="Resize"></div>
+      {#if !full}
+        <div class="fw-corner fw-resize" onpointerdown={onResizePointerDown} title="Resize"></div>
+      {/if}
     {/if}
   </div>
 {/if}
@@ -362,18 +462,29 @@
   .fw-body:active {
     cursor: grabbing;
   }
+  /* Maximized: nothing to drag, and square corners flush with the toolbar/status bar. */
+  .fw-body.fw-full,
+  .fw-body.fw-full:active {
+    cursor: default;
+    border-radius: 0;
+  }
+  .fw-bg-full {
+    border-radius: 0;
+  }
   .fw-body video,
   .fw-body img,
   .fw-body canvas {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    /* The window is sized to the display shape (see floatWindowSize), so `fill` shows the whole
+       picture at that shape — unlike `cover`, which cropped it and could not correct non-square
+       pixels (analog SD). */
+    object-fit: fill;
     display: block;
     /* Own compositing layer — see VideoWidget: keeps the 60 fps MJPEG <img> from dirtying shared
        layer tiles every frame on WebKitGTK. */
     will-change: transform;
   }
-  .fw-body video, .fw-body img, .fw-body canvas { scale: var(--vz, 1); }
   .fw-body video.mirror,
   .fw-body img.mirror,
   .fw-body canvas.mirror {
@@ -416,6 +527,69 @@
   .fw-close:hover {
     background: rgba(212, 0, 0, 0.7);
     color: #fff;
+  }
+  /* Expand/restore + swap buttons — a strip continuing right of the ✕. */
+  .fw-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: #e0e0e0;
+    background: rgba(0, 0, 0, 0.45);
+    border: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0;
+    cursor: pointer;
+  }
+  .fw-btn:hover {
+    background: rgba(224, 48, 44, 0.7);
+    color: #fff;
+  }
+  .fw-expand {
+    left: 26px;
+  }
+  .fw-swap {
+    left: 52px;
+  }
+  .fw-zoom {
+    left: 78px;
+    border-radius: 0 0 8px 0;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+  }
+  .fw-zoom.active {
+    color: var(--mx-red, #e0302c);
+  }
+  /* Move bar shown while zoomed: a draggable strip along the top edge, right of the buttons. */
+  .fw-move {
+    position: absolute;
+    top: 0;
+    right: 26px; /* clear of the resize grip */
+    height: 26px;
+    z-index: 122;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.35);
+    cursor: move;
+    touch-action: none;
+  }
+  .fw-move:hover {
+    background: rgba(224, 48, 44, 0.45);
+  }
+  .fw-move-grip {
+    width: 28px;
+    height: 6px;
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.75) 1.4px, transparent 1.6px);
+    background-size: 7px 6px;
+  }
+  /* Carries the digital zoom/pan so it composes with the media's own mirror flip. */
+  .zoom-layer {
+    position: absolute;
+    inset: 0;
+    transform-origin: 50% 50%;
   }
   .fw-resize {
     right: 0;

@@ -24,11 +24,12 @@
     setVideoResolution,
     setCameraFps,
     setVideoMirror,
-    videoZoom,
+    setDisplayRatio,
+    videoDisplayAspect,
     setVideoZoom,
-    zoomVideoWheel,
-    VIDEO_ZOOM_MIN,
-    VIDEO_ZOOM_MAX,
+    videoZoomTransform,
+    VIDEO_ZOOM_LEVELS,
+    type DisplayRatio,
     setDisableHwAccel,
     setVideoKind,
     setRtspUrl,
@@ -59,6 +60,8 @@
     setNativeRecording,
   } from '$lib/stores/video';
   import { canvasSink, mjpegSink, mjpegStats } from '$lib/controllers/mjpegSink';
+  import { videoZoom } from '$lib/controllers/videoZoom';
+  import SegmentedToggle from '$lib/components/panel/SegmentedToggle.svelte';
   import {
     codecsFor,
     codecLabel,
@@ -71,6 +74,8 @@
   import Toggle from '$lib/components/panel/Toggle.svelte';
   import { isLinux } from '$lib/platform';
   import VideoReconnectOverlay from '$lib/components/video/VideoReconnectOverlay.svelte';
+
+  const zoomOptions = VIDEO_ZOOM_LEVELS.map((z) => ({ value: String(z), label: `${z}×` }));
 
   let videoEl = $state<HTMLVideoElement | null>(null);
   // Which saved RTSP connection is being edited inline (null = none).
@@ -362,8 +367,9 @@
 
 {#snippet body()}
   <div class="vp-body">
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="preview" style="aspect-ratio: {$videoState.aspect}; --vz: {$videoZoom};" onwheel={zoomVideoWheel}>
+    <!-- Drag pans the zoomed picture; the wheel is left alone here so it keeps scrolling the panel. -->
+    <div class="preview" style="aspect-ratio: {$videoDisplayAspect};" use:videoZoom={{ pan: true, wheel: false }}>
+      <div class="zoom-layer" style:transform={$videoZoomTransform}>
       {#if $videoState.mjpegUrl}
         <!-- MJPEG multipart feed — off-thread reader where the WebView allows it, else an <img>
              whose per-part `load` carries both the frame count and the picture size. -->
@@ -395,6 +401,7 @@
           onwaiting={() => console.warn('[video] waiting/buffering')}
         ></video>
       {/if}
+      </div>
       {#if $videoState.status !== 'live' && !$videoState.mjpegUrl}
         <div class="preview-placeholder">
           {#if $videoState.status === 'starting'}
@@ -408,6 +415,19 @@
       {/if}
       <VideoReconnectOverlay />
     </div>
+
+    <div class="zoom-row">
+      <span class="label">{$t('video.zoom')}</span>
+      <SegmentedToggle
+        size="sm"
+        options={zoomOptions}
+        value={String($videoState.zoom)}
+        onchange={(v) => setVideoZoom(Number(v))}
+      />
+    </div>
+    {#if $videoState.zoom > 1}
+      <p class="hint">{$t('video.zoomHint')}</p>
+    {/if}
 
     {#if $videoState.status === 'live'}
       <div class="info-line">
@@ -460,8 +480,9 @@
           onchange={(e) => setVideoDevice((e.currentTarget as HTMLSelectElement).value || null)}
         >
           <option value="">{$t('video.defaultDevice')}</option>
-          {#each $videoState.devices as d}
-            <option value={d.deviceId}>{d.label}</option>
+          {#each $videoState.devices as d, i}
+            <!-- Hardware name (e.g. the capture card's model) is deliberately not shown. -->
+            <option value={d.deviceId}>{$t('video.genericDeviceLabel', { values: { n: i + 1 } })}</option>
           {/each}
         </select>
       </label>
@@ -699,17 +720,23 @@
     {/if}
 
     <div class="field-row">
-      <span class="label">{$t('video.zoom')}</span>
-      <input type="range" min={VIDEO_ZOOM_MIN} max={VIDEO_ZOOM_MAX} step="0.5" value={$videoZoom}
-        oninput={(e) => setVideoZoom(Number(e.currentTarget.value))} />
-      <span class="label">{$videoZoom.toFixed(1)}×</span>
-      <Button variant="standard" disabled={$videoZoom === 1} onclick={() => setVideoZoom(1)}>1×</Button>
-    </div>
-
-    <div class="field-row">
       <Toggle checked={$videoState.mirror} onchange={(c) => setVideoMirror(c)} id="vp-mirror" />
       <span class="label">{$t('video.mirror')}</span>
     </div>
+
+    <label class="field">
+      <span class="label">{$t('video.displayRatio')}</span>
+      <select
+        value={$videoState.displayRatio}
+        onchange={(e) => setDisplayRatio((e.currentTarget as HTMLSelectElement).value as DisplayRatio)}
+      >
+        <option value="auto">{$t('video.ratioAuto')}</option>
+        <option value="4:3">4:3</option>
+        <option value="16:9">16:9</option>
+        <option value="fill">{$t('video.ratioFill')}</option>
+      </select>
+    </label>
+    <p class="hint">{$t('video.displayRatioHint')}</p>
 
     <!-- Escape hatch: some driver/hardware combinations pass the backend probe but still misbehave on
          a live feed. Hardware stays the default; this forces the software transcode. -->
@@ -794,14 +821,19 @@
     align-items: center;
     justify-content: center;
   }
+  /* Carries the digital zoom/pan (transform set inline from videoZoomTransform) so it composes with the
+     media's own mirror flip instead of fighting it. */
+  .zoom-layer { position: absolute; inset: 0; transform-origin: 50% 50%; }
+  .zoom-row { display: flex; align-items: center; gap: 8px; }
   /* will-change: own compositing layer — see VideoWidget: keeps the 60 fps MJPEG <img> from
      dirtying shared layer tiles every frame on WebKitGTK. */
-  .preview video { width: 100%; height: 100%; object-fit: contain; display: block; will-change: transform; }
-  .preview video, .preview img, .preview canvas { scale: var(--vz, 1); }
+  /* `fill`: the box is already the display shape (aspect-ratio above), so this shows the whole picture
+     at that shape — and corrects non-square-pixel sources (analog SD), which `contain` could not. */
+  .preview video { width: 100%; height: 100%; object-fit: fill; display: block; will-change: transform; }
   .preview video.mirror { transform: scaleX(-1); }
   .preview video.hidden { visibility: hidden; }
   .preview img,
-  .preview canvas { width: 100%; height: 100%; object-fit: contain; display: block; will-change: transform; }
+  .preview canvas { width: 100%; height: 100%; object-fit: fill; display: block; will-change: transform; }
   .preview img.mirror,
   .preview canvas.mirror { transform: scaleX(-1); }
   .preview-placeholder {

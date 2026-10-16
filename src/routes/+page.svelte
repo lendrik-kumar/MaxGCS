@@ -87,7 +87,8 @@
   import WidgetPanel from "$lib/components/WidgetPanel.svelte";
   import { LARGE_BASE_VMIN } from "$lib/config/widgetRegistry";
   import FloatingVideoWindow from "$lib/components/video/FloatingVideoWindow.svelte";
-  import { initVideo, videoState, videoStream, bindVideoEl, setMapLocation, setFloatHeightFrac, setFloatPos, registerPiPElement, reportMjpegError } from "$lib/stores/video";
+  import { initVideo, videoState, videoStream, bindVideoEl, setMapLocation, setFloatHeightFrac, setFloatPos, registerPiPElement, reportMjpegError, floatWindowSize, clampFloatFrac, toggleFloatFull, floatFullRect, FLOAT_SNAP_BOTTOM, FLOAT_TOP_SAFE, FLOAT_EDGE, clampFloatPos, videoDisplayAspect, fitContain, videoZoomTransform, setVideoZoom, VIDEO_ZOOM_LEVELS } from "$lib/stores/video";
+  import { videoZoom } from "$lib/controllers/videoZoom";
   import { canvasSink, mjpegSink } from "$lib/controllers/mjpegSink";
   import { lowPowerActive } from "$lib/stores/lowPower";
   import { initPulseBlink } from "$lib/stores/pulseBlink";
@@ -255,13 +256,18 @@
   let sideDockW = $state(200);
   let sideDockH = $state(400);
 
+  // Global UI scale (1 = 100%, up to 2). Zooms the chrome via `.ui-scale`; the map
+  // (`.layer-map`) stays unzoomed/native. See docs/archive/UI_SCALING.md.
+  let uiScale = $state(1);
+
   // Viewport size (for the snapped floating-video reserve)
   let winW = $state(typeof window !== 'undefined' ? window.innerWidth : 1280);
   let winH = $state(typeof window !== 'undefined' ? window.innerHeight : 720);
-  // Width the bottom dock must yield to the bottom-left snapped video window.
+  // Width the bottom dock must yield to the bottom-left snapped video window (logical px, like the
+  // dock itself — see floatWindowSize).
   const videoReserve = $derived(
     $videoState.floating && $videoState.floatSnapped
-      ? Math.min($videoState.floatHeightFrac * winH * ($videoState.aspect || 16 / 9), winW * 0.7) + 16
+      ? floatWindowSize($videoState.floatHeightFrac, $videoDisplayAspect, winW / uiScale, winH / uiScale).w + 16
       : 0,
   );
 
@@ -279,23 +285,43 @@
     if (pipVideoEl) registerPiPElement(pipVideoEl);
   });
 
-  // Global UI scale (1 = 100%, up to 2). Zooms the chrome via `.ui-scale`; the map
-  // (`.layer-map`) stays unzoomed/native. See docs/archive/UI_SCALING.md.
-  let uiScale = $state(1);
-
   // Floating-window rect (must match FloatingVideoWindow's own computation) — used
   // to place the map inside the window's frame when the view is swapped. The window
   // lives in the zoomed `.ui-scale` layer but the map is unzoomed, so the visual rect
   // is the window's logical rect * uiScale.
-  // Must match FloatingVideoWindow's geometry exactly (incl. the 200px min-height floor that keeps
-  // the mini-map's 4 control buttons from overflowing) so the in-frame map aligns with the frame.
-  const FLOAT_MIN_H = 200;
-  const floatH = $derived(
-    Math.min(Math.round(0.3 * winH), Math.max(FLOAT_MIN_H, Math.round($videoState.floatHeightFrac * winH))),
+  // Must match FloatingVideoWindow's geometry exactly (incl. the min-height floor that keeps the
+  // mini-map's 4 control buttons from overflowing) so the in-frame map aligns with the frame — both
+  // take it from floatWindowSize in the video store. Logical px: the logical viewport is the real one
+  // divided by uiScale.
+  const logicalW = $derived(winW / uiScale);
+  const logicalH = $derived(winH / uiScale);
+  const floatFull = $derived($videoState.floatFull);
+  const floatFullR = $derived(floatFullRect(logicalW, logicalH));
+  const floatSize = $derived(
+    floatFull
+      ? { w: floatFullR.w, h: floatFullR.h }
+      : floatWindowSize($videoState.floatHeightFrac, $videoDisplayAspect, logicalW, logicalH),
   );
-  const floatW = $derived(Math.min(Math.round(floatH * ($videoState.aspect || 16 / 9)), Math.round(winW * 0.7)));
-  const floatLeft = $derived($videoState.floatSnapped ? 8 : $videoState.floatX);
-  const floatTop = $derived($videoState.floatSnapped ? winH - floatH - 30 : $videoState.floatY);
+  const floatH = $derived(floatSize.h);
+  const floatW = $derived(floatSize.w);
+  const floatFreePos = $derived(clampFloatPos($videoState.floatX, $videoState.floatY, floatW, floatH, logicalW, logicalH));
+  const floatLeft = $derived(floatFull ? floatFullR.x : $videoState.floatSnapped ? 8 : floatFreePos.x);
+  const floatTop = $derived(
+    floatFull ? floatFullR.y : $videoState.floatSnapped ? logicalH - floatH - FLOAT_SNAP_BOTTOM : floatFreePos.y,
+  );
+  const floatExpanded = $derived(floatFull);
+
+  // Full-screen video (shown when the map has swapped into a frame): the wrapper's measured size and
+  // the box the picture is stretched into — the display shape fitted inside the wrapper (so any black
+  // bars are on the sides/top by the SHAPE's choice, not the media's raw pixel ratio), or the whole
+  // wrapper for "Stretch to fill".
+  let mapWrapW = $state(0);
+  let mapWrapH = $state(0);
+  const mapVideoBox = $derived(
+    $videoState.displayRatio === 'fill'
+      ? { w: mapWrapW, h: mapWrapH }
+      : fitContain($videoDisplayAspect, mapWrapW, mapWrapH),
+  );
   // The single map jumps to whichever video surface was double-clicked: `floating` → the chromeless
   // floating window frame, `widget` → the video-widget tile (its published rect). Every other surface
   // shows video. `main` (default) = the normal full-screen map.
@@ -343,11 +369,17 @@
   }
   function miniResizeMove(e: PointerEvent) {
     if (!miniResizing) return;
-    const delta = (mrStartY - e.clientY) / winH; // drag up → larger
-    const fracMin = Math.max(0.1, FLOAT_MIN_H / winH);
-    const newFrac = Math.min(0.3, Math.max(fracMin, mrStartFrac + delta));
+    const delta = (mrStartY - e.clientY) / winH; // drag up → larger (a fraction of the screen height)
+    const newFrac = clampFloatFrac(mrStartFrac + delta, logicalH);
     setFloatHeightFrac(newFrac);
-    if (!mrSnapped) setFloatPos($videoState.floatX, mrStartBottom - newFrac * winH);
+    if (!mrSnapped) {
+      // Bottom edge stays put; never under the toolbar, and pulled back in if the right edge overflows.
+      const next = floatWindowSize(newFrac, $videoDisplayAspect, logicalW, logicalH);
+      setFloatPos(
+        Math.max(FLOAT_EDGE, Math.min($videoState.floatX, logicalW - next.w - FLOAT_EDGE)),
+        Math.max(FLOAT_TOP_SAFE, mrStartBottom - next.h),
+      );
+    }
   }
   function miniResizeUp() {
     miniResizing = false;
@@ -2611,7 +2643,24 @@
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="miniframe-ctl" style={mapFrameStyle}>
       <button class="mf-corner mf-close" onclick={() => setMapLocation('main')} title={$t('video.close')}>✕</button>
-      <div class="mf-corner mf-resize" onpointerdown={miniResizeDown} title="Resize"></div>
+      <!-- expand / restore — same toggle as the video window's (shared size state) -->
+      <button
+        class="mf-corner mf-expand"
+        onclick={toggleFloatFull}
+        title={floatExpanded ? $t('video.restoreWindow') : $t('video.expandWindow')}
+        aria-label={floatExpanded ? $t('video.restoreWindow') : $t('video.expandWindow')}
+      >
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          {#if floatExpanded}
+            <path d="M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7" />
+          {:else}
+            <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" />
+          {/if}
+        </svg>
+      </button>
+      {#if !floatFull}
+        <div class="mf-corner mf-resize" onpointerdown={miniResizeDown} title="Resize"></div>
+      {/if}
     </div>
   {/if}
 
@@ -2670,9 +2719,18 @@
   <!-- Full-size video shown in the main map zone whenever the map has jumped to another surface.
        Double-click brings the map back to the main full-screen view. -->
   {#if mapInFrame}
-    <!-- Wrapper carries the inset + black backdrop; the video fills it with object-fit: contain so
-         it scales to the window (full height/width) without distortion — bars where aspect differs. -->
-    <div class="map-video-wrap">
+    <!-- Wrapper carries the inset + black backdrop. The picture sits in an explicit box (map-video-box)
+         sized to the Display ratio setting — the display shape fitted inside the wrapper, or the whole
+         wrapper for "Stretch to fill" — and is stretched to that box (object-fit: fill), so analog SD
+         shows at its true 4:3 and bars only appear where the SHAPE leaves room. -->
+    <div class="map-video-wrap" bind:clientWidth={mapWrapW} bind:clientHeight={mapWrapH}>
+      <!-- Mouse wheel steps the digital zoom; drag pans when zoomed (double-click still swaps back). -->
+      <div
+        class="map-video-box"
+        style="left:{Math.round((mapWrapW - mapVideoBox.w) / 2)}px; top:{Math.round((mapWrapH - mapVideoBox.h) / 2)}px; width:{mapVideoBox.w}px; height:{mapVideoBox.h}px;"
+        use:videoZoom={{ wheel: true, pan: true }}
+      >
+      <div class="zoom-layer" style:transform={$videoZoomTransform}>
       {#if $videoState.mjpegUrl}
         <!-- Native / MJPEG feed (no MediaStream): drawn by the off-thread reader where the WebView
              allows it, otherwise the plain <img> multipart stream. -->
@@ -2708,6 +2766,19 @@
           ondblclick={() => setMapLocation('main')}
         ></video>
       {/if}
+      </div>
+      </div>
+      <!-- On-screen zoom buttons (for when there is no mouse wheel, e.g. touch). -->
+      <div class="vz-ctl">
+        {#each VIDEO_ZOOM_LEVELS as z}
+          <button
+            class="vz-btn"
+            class:active={$videoState.zoom === z}
+            onclick={() => setVideoZoom(z)}
+            title={$t('video.zoom') + ' ' + z + '×'}
+          >{z}×</button>
+        {/each}
+      </div>
     </div>
   {/if}
 
@@ -2930,7 +3001,7 @@
   <video bind:this={pipVideoEl} class="pip-source" autoplay muted playsinline></video>
 
   <!-- ======= FLOATING VIDEO WINDOW ======= -->
-  <FloatingVideoWindow />
+  <FloatingVideoWindow {uiScale} />
 
   <!-- ======= MAP CONTROLS RESERVED AREA (bottom-right corner of the confined map panel) ======= -->
   <div class="zone-map-controls">
@@ -3177,6 +3248,23 @@
     background: rgba(212, 0, 0, 0.7);
     color: #fff;
   }
+  .mf-expand {
+    left: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: #e0e0e0;
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0 0 8px 0;
+    cursor: pointer;
+  }
+  .mf-expand:hover {
+    background: rgba(224, 48, 44, 0.7);
+    color: #fff;
+  }
   .mf-resize {
     right: 0;
     cursor: nesw-resize;
@@ -3197,14 +3285,60 @@
     background: #000;
     z-index: 0;
   }
-  /* width/height 100% (not auto) so the replaced <video> stretches to the wrapper instead of using
-     its intrinsic stream resolution; object-fit: contain keeps the aspect ratio (letterbox bars). */
+  /* The box the picture is stretched into; its position/size are set inline from the Display ratio
+     setting (see mapVideoBox). */
+  .map-video-box {
+    position: absolute;
+    overflow: hidden; /* a zoomed picture must not spill out of its box */
+  }
+  /* Carries the digital zoom/pan so it composes with the media's own mirror flip. */
+  .zoom-layer {
+    position: absolute;
+    inset: 0;
+    transform-origin: 50% 50%;
+  }
+  .vz-ctl {
+    position: absolute;
+    /* Top-left: the bottom/right edges sit under the telemetry widgets and the nav rail's panels. */
+    left: 12px;
+    top: 12px;
+    display: flex;
+    gap: 2px;
+    z-index: 2;
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: 6px;
+    padding: 2px;
+  }
+  .vz-btn {
+    min-width: 34px;
+    height: 26px;
+    padding: 0 6px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: #e0e0e0;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .vz-btn:hover {
+    background: rgba(224, 48, 44, 0.5);
+    color: #fff;
+  }
+  .vz-btn.active {
+    background: rgba(224, 48, 44, 0.85);
+    color: #fff;
+  }
+  /* width/height 100% of the box (not auto) so the replaced <video> stretches to it instead of using
+     its intrinsic stream resolution; object-fit: fill because the box already has the right shape
+     (the display aspect, or the whole area for "Stretch to fill"), which also corrects non-square-pixel
+     sources like analog SD. */
   .map-video {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: fill;
     display: block;
   }
   .map-video.mirror {

@@ -17,7 +17,7 @@
 // `getUserMedia` works in WebView2 (Windows) and WebKitGTK (Linux) and, with the camera entitlement,
 // WKWebView (macOS), so the camera path needs no backend. rtsp + native use the Rust backend.
 
-import { writable, get } from 'svelte/store';
+import { writable, get, derived } from 'svelte/store';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { t } from 'svelte-i18n';
@@ -56,6 +56,11 @@ export interface RtspConnection {
 }
 /** Where the single map instance currently lives (the inverse of which surfaces show video). */
 export type MapLocation = 'main' | 'floating' | 'widget';
+/** How the picture is shaped on screen. `auto` = the source's own shape, except analog SD (goggles
+ *  through an AV capture card), which is shown at its true 4:3; `4:3` / `16:9` force that shape;
+ *  `fill` additionally stretches the full-screen view over the whole area (no black bars). */
+export type DisplayRatio = 'auto' | '4:3' | '16:9' | 'fill';
+const DISPLAY_RATIOS: readonly DisplayRatio[] = ['auto', '4:3', '16:9', 'fill'];
 
 export interface VideoState {
   /** Active source kind. `camera` → getUserMedia MediaStream; `rtsp` → go2rtc (WebRTC or MJPEG);
@@ -113,7 +118,19 @@ export interface VideoState {
   recordingPath: string | null;
   /** Mirror horizontally (front-facing cams) — applied by the display sinks. */
   mirror: boolean;
-  /** Source aspect ratio (w/h); drives the widget / floating-window sizing. */
+  /** Display ratio mode — see `DisplayRatio` / `resolveDisplayAspect`. Persisted. */
+  displayRatio: DisplayRatio;
+  /** Digital zoom of the picture, one of `VIDEO_ZOOM_LEVELS`. One value for every video surface (panel
+   *  preview, floating window, full-screen view). Runtime-only: resets when video stops. */
+  zoom: number;
+  /** Pan of the zoomed picture as -1…1 of the available travel on each axis (0 = centred). Normalised
+   *  so the same pan reads correctly on surfaces of any size. */
+  panX: number;
+  panY: number;
+  /** The floating window is "maximized": it fills the whole content area (see `floatFullRect`). Runtime-only. */
+  floatFull: boolean;
+  /** Source aspect ratio (w/h) of the raw pixels. Surfaces size themselves from the resolved
+   *  display aspect (`videoDisplayAspect`), not from this directly. */
   aspect: number;
   /** Negotiated track settings (for the info line); null until live. */
   width: number | null;
@@ -131,7 +148,7 @@ export interface VideoState {
   /** Free position (px from top-left of the app window), used when not snapped. */
   floatX: number;
   floatY: number;
-  /** Window height as a fraction of the viewport height (0.1…0.3); width = height·aspect. */
+  /** Window height as a fraction of the viewport height (FLOAT_FRAC_MIN…FLOAT_FRAC_MAX); width = height·aspect. */
   floatHeightFrac: number;
   /** Where the single map instance currently lives (transient, not persisted). `main` = the normal
    *  full-screen map; `floating`/`widget` = the map jumped into that video surface (which double-
@@ -164,6 +181,7 @@ interface VideoPrefs {
   nativeHeight: number;
   nativeFps: number;
   disableHwAccel: boolean;
+  displayRatio: DisplayRatio;
   mirror: boolean;
   floating: boolean;
   floatSnapped: boolean;
@@ -188,6 +206,7 @@ const PREF_DEFAULTS: VideoPrefs = {
   nativeHeight: 720,
   nativeFps: 30,
   disableHwAccel: false,
+  displayRatio: 'auto',
   mirror: false,
   floating: false,
   floatSnapped: true,
@@ -222,6 +241,9 @@ function loadPrefs(): VideoPrefs {
         nativeHeight: p.nativeHeight ?? 720,
         nativeFps: p.nativeFps ?? 30,
         disableHwAccel: p.disableHwAccel ?? false,
+        displayRatio: DISPLAY_RATIOS.includes(p.displayRatio as DisplayRatio)
+          ? (p.displayRatio as DisplayRatio)
+          : 'auto',
       };
     }
   } catch {
@@ -252,6 +274,7 @@ function savePrefs(): void {
         nativeHeight: s.nativeSel.height,
         nativeFps: s.nativeSel.fps,
         disableHwAccel: s.disableHwAccel,
+        displayRatio: s.displayRatio,
         mirror: s.mirror,
         floating: s.floating,
         floatSnapped: s.floatSnapped,
@@ -294,6 +317,11 @@ const INITIAL: VideoState = {
   mjpegUrl: null,
   activeTranscode: null,
   disableHwAccel: boot.disableHwAccel,
+  displayRatio: boot.displayRatio,
+  zoom: 1,
+  panX: 0,
+  panY: 0,
+  floatFull: false,
   recording: false,
   recordingPath: null,
   mirror: boot.mirror,
@@ -313,6 +341,43 @@ const INITIAL: VideoState = {
 };
 
 export const videoState = writable<VideoState>({ ...INITIAL });
+
+/** Analog SD as it comes out of an AV capture card: 720×480 / 720×576 (and CIF-ish cousins). The frame
+ *  is stored with non-square pixels — its width/height (1.5, 1.25) is NOT the shape it is meant to be
+ *  viewed at (4:3), so displaying it at its pixel ratio looks stretched, and a TV makes that obvious.
+ *  Goggle video over an AV-to-USB dongle is exactly this. */
+function isAnalogSd(width: number | null, height: number | null): boolean {
+  return !!width && !!height && width <= 720 && [240, 288, 480, 486, 576].includes(height);
+}
+
+/** The shape (width/height) the picture should be shown at for a ratio mode. Pure — unit-testable. */
+export function resolveDisplayAspect(
+  ratio: DisplayRatio,
+  width: number | null,
+  height: number | null,
+  sourceAspect: number,
+): number {
+  if (ratio === '4:3') return 4 / 3;
+  if (ratio === '16:9') return 16 / 9;
+  // auto / fill: the source's own shape, except analog SD which is really 4:3.
+  if (isAnalogSd(width, height)) return 4 / 3;
+  return sourceAspect || 16 / 9;
+}
+
+/** The resolved display shape, kept in step with the source and the ratio setting. Every video surface
+ *  (panel preview, floating window, full-screen swap, the map frame that mirrors the window) sizes from
+ *  this one value, so they never disagree. */
+export const videoDisplayAspect = derived(videoState, (s) =>
+  resolveDisplayAspect(s.displayRatio, s.width, s.height, s.aspect),
+);
+
+/** Largest `aspect`-shaped box that fits inside boxW × boxH (CSS `contain`, but explicit so the picture
+ *  can be stretched to a shape different from the media's own pixel ratio with `object-fit: fill`). */
+export function fitContain(aspect: number, boxW: number, boxH: number): { w: number; h: number } {
+  const a = aspect || 16 / 9;
+  const w = Math.min(boxW, boxH * a);
+  return { w: Math.round(w), h: Math.round(w / a) };
+}
 
 /**
  * The single live MediaStream that every sink renders. For `camera` it is the
@@ -1209,6 +1274,10 @@ export function stopVideo(): void {
     activeTranscode: null,
     reconnecting: false,
     reconnectAttempt: 0,
+    zoom: 1,
+    panX: 0,
+    panY: 0,
+    floatFull: false,
     recording: false,
     recordingPath: null,
   });
@@ -1438,28 +1507,61 @@ export async function setVideoResolution(resolution: VideoResolution): Promise<v
   if (get(videoState).enabled) await startVideo();
 }
 
-/** Digital zoom of the live picture (1×…4×), applied by every video surface via CSS `scale`. Session
- *  only — it resets to 1× when the app restarts, so a zoomed feed is never mistaken for the camera's
- *  true framing on the next flight. */
-export const VIDEO_ZOOM_MIN = 1;
-export const VIDEO_ZOOM_MAX = 4;
-export const videoZoom = writable(1);
-
-export function setVideoZoom(zoom: number): void {
-  const z = Math.round(Math.max(VIDEO_ZOOM_MIN, Math.min(VIDEO_ZOOM_MAX, zoom)) * 10) / 10;
-  videoZoom.set(z);
-}
-
-/** Wheel handler shared by the video surfaces: scroll up = zoom in, 0.5× per notch. */
-export function zoomVideoWheel(e: WheelEvent): void {
-  e.preventDefault();
-  setVideoZoom(get(videoZoom) + (e.deltaY < 0 ? 0.5 : -0.5));
-}
-
 export function setVideoMirror(mirror: boolean): void {
   patch({ mirror });
   savePrefs();
 }
+
+export function setDisplayRatio(displayRatio: DisplayRatio): void {
+  patch({ displayRatio });
+  savePrefs();
+}
+
+// ── Digital zoom ─────────────────────────────────────────────────────
+// A CSS scale+translate on a layer wrapped around the picture (see `.zoom-layer` in each surface), so
+// it costs nothing per frame and works the same for <video>, <img> and the off-thread <canvas>. It
+// magnifies the pixels the capture already has — it cannot add detail, so 4× on analog SD is soft — and
+// it is not the goggles' own (optical) camera zoom.
+export const VIDEO_ZOOM_LEVELS = [1, 2, 4] as const;
+
+const clampPan = (v: number) => Math.max(-1, Math.min(1, v));
+
+/** Set the zoom to the nearest preset. Back at 1× the pan is centred again. */
+export function setVideoZoom(zoom: number): void {
+  const level = VIDEO_ZOOM_LEVELS.reduce((best, l) => (Math.abs(l - zoom) < Math.abs(best - zoom) ? l : best));
+  patch(level === 1 ? { zoom: 1, panX: 0, panY: 0 } : { zoom: level });
+}
+
+/** One preset up (+1) or down (-1), stopping at the ends — mouse-wheel behaviour. */
+export function stepVideoZoom(dir: 1 | -1): void {
+  const i = VIDEO_ZOOM_LEVELS.indexOf(get(videoState).zoom as (typeof VIDEO_ZOOM_LEVELS)[number]);
+  const next = Math.max(0, Math.min(VIDEO_ZOOM_LEVELS.length - 1, (i < 0 ? 0 : i) + dir));
+  setVideoZoom(VIDEO_ZOOM_LEVELS[next]);
+}
+
+/** Next preset, wrapping 4× → 1× — the single-button control. */
+export function cycleVideoZoom(): void {
+  const i = VIDEO_ZOOM_LEVELS.indexOf(get(videoState).zoom as (typeof VIDEO_ZOOM_LEVELS)[number]);
+  setVideoZoom(VIDEO_ZOOM_LEVELS[((i < 0 ? 0 : i) + 1) % VIDEO_ZOOM_LEVELS.length]);
+}
+
+/** Pan by a fraction of the available travel (what a drag of `dx`/`dy` px works out to). No-op at 1×. */
+export function panVideoBy(dx: number, dy: number): void {
+  const s = get(videoState);
+  if (s.zoom <= 1) return;
+  patch({ panX: clampPan(s.panX + dx), panY: clampPan(s.panY + dy) });
+}
+
+/** CSS transform for a zoom/pan. `translate` percentages are relative to the layer's own size, so the
+ *  maximum shift that still keeps the picture covering the frame, (zoom − 1)/2 of the width, is
+ *  `(zoom − 1) × 50 %` — and the same value works on every surface. Empty string at 1×. */
+export function zoomTransform(zoom: number, panX: number, panY: number): string {
+  if (zoom <= 1) return '';
+  const k = (zoom - 1) * 50;
+  return `translate(${(panX * k).toFixed(3)}%, ${(panY * k).toFixed(3)}%) scale(${zoom})`;
+}
+
+export const videoZoomTransform = derived(videoState, (s) => zoomTransform(s.zoom, s.panX, s.panY));
 
 /** Force the software transcode regardless of what the backend's hardware probe found. Restarts a
  *  live RTSP feed so the change takes effect immediately — the decision is made when the source is
@@ -1489,12 +1591,81 @@ export function setFloatPos(floatX: number, floatY: number): void {
   savePrefs();
 }
 
-/** Floating-window height as a fraction of the viewport. Exported so `FloatingVideoWindow` clamps
- *  to the same bounds the setter enforces — the two used to carry their own copies of 0.1/0.3 and
- *  could disagree. The ceiling is 0.85 rather than a full 1.0 so the window can never cover the
- *  toolbar and status bar, which would leave no way to reach the controls that shrink it again. */
-export const FLOAT_HEIGHT_MIN = 0.1;
-export const FLOAT_HEIGHT_MAX = 0.85;
+// Floating-window geometry, shared by FloatingVideoWindow and the map-in-frame overlay in +page (which
+// must line up with it exactly). All lengths are LOGICAL px — i.e. inside the `.ui-scale` layer, where
+// the viewport is `innerWidth / uiScale` × `innerHeight / uiScale` — so a big window still fits when the
+// UI is scaled up (e.g. on a TV). `frac` is the window height as a fraction of that logical viewport
+// height, which is also the fraction of the real screen it covers.
+export const FLOAT_FRAC_MIN = 0.1;
+export const FLOAT_FRAC_MAX = 0.8;
+/** Floor so the mini-map's 4 stacked control buttons never overflow the frame. */
+export const FLOAT_MIN_H_PX = 200;
+/** Gap between a snapped window's bottom edge and the viewport bottom (clears the 24px status bar). */
+export const FLOAT_SNAP_BOTTOM = 30;
+/** Keep a window's top edge below the 53px toolbar (z 200), or its ✕ / resize grip become unreachable. */
+export const FLOAT_TOP_SAFE = 56;
+export const FLOAT_WIDTH_FRAC_MAX = 0.9;
+/** Keep a free-floating window this far from the screen's left/right/bottom edges. The app window's own
+ *  invisible resize strips (WindowResizeBorders, 4–8px, above everything) live at those edges: a
+ *  press on the window's border there would resize the whole app window instead of the video window. */
+export const FLOAT_EDGE = 12;
+
+/** A free-floating window's top-left kept inside the safe area (clear of the resize strips at the screen
+ *  edges and of the toolbar). Applied when drawing as well as when moving, so a position saved by an
+ *  earlier session, or left stale by a screen change, can never leave the window on those edges. */
+export function clampFloatPos(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  lvw: number,
+  lvh: number,
+): { x: number; y: number } {
+  return {
+    x: Math.max(FLOAT_EDGE, Math.min(x, lvw - w - FLOAT_EDGE)),
+    y: Math.max(FLOAT_TOP_SAFE, Math.min(y, lvh - h - FLOAT_EDGE)),
+  };
+}
+
+/** Largest usable height fraction for a logical viewport height: the global cap, further limited so a
+ *  bottom-snapped window's top stays clear of the toolbar. */
+export function floatMaxFrac(lvh: number): number {
+  const fitsBelowToolbar = (lvh - FLOAT_SNAP_BOTTOM - FLOAT_TOP_SAFE) / lvh;
+  return Math.min(FLOAT_FRAC_MAX, Math.max(FLOAT_FRAC_MIN, fitsBelowToolbar));
+}
+
+export function clampFloatFrac(frac: number, lvh: number): number {
+  const hi = floatMaxFrac(lvh);
+  const lo = Math.min(hi, Math.max(FLOAT_FRAC_MIN, FLOAT_MIN_H_PX / lvh));
+  return Math.min(hi, Math.max(lo, frac));
+}
+
+/** Logical size of the floating window for a height fraction, the source aspect and the viewport. */
+export function floatWindowSize(
+  frac: number,
+  aspect: number,
+  lvw: number,
+  lvh: number,
+): { w: number; h: number } {
+  const a = aspect || 16 / 9;
+  const maxH = Math.round(floatMaxFrac(lvh) * lvh);
+  let h = Math.min(maxH, Math.max(FLOAT_MIN_H_PX, Math.round(frac * lvh)));
+  let w = Math.round(h * a);
+  const maxW = Math.round(lvw * FLOAT_WIDTH_FRAC_MAX);
+  if (w > maxW) {
+    // Too wide for the screen: shrink the height with it so the window keeps the picture's shape (the
+    // picture is stretched to the window, so a wrong shape here would distort it) — but not below the
+    // px floor the mini-map's buttons need.
+    w = maxW;
+    h = Math.min(h, Math.max(FLOAT_MIN_H_PX, Math.round(w / a)));
+  }
+  return { w, h };
+}
+
+
+/** Height bounds, kept under their older names for the Video panel's slider. */
+export const FLOAT_HEIGHT_MIN = FLOAT_FRAC_MIN;
+export const FLOAT_HEIGHT_MAX = FLOAT_FRAC_MAX;
 
 /** The three one-click sizes offered in the Video panel, alongside the slider that sets any value
  *  in between (and the window's own corner grip, which does the same by dragging). */
@@ -1520,11 +1691,35 @@ export function activeFloatSize(frac: number): FloatSizeKey | null {
   return FLOAT_SIZE_PRESETS.find((o) => Math.abs(o.frac - frac) < PRESET_EPSILON)?.key ?? null;
 }
 
-const FLOAT_MIN = FLOAT_HEIGHT_MIN;
-const FLOAT_MAX = FLOAT_HEIGHT_MAX;
 export function setFloatHeightFrac(frac: number): void {
-  patch({ floatHeightFrac: Math.min(FLOAT_MAX, Math.max(FLOAT_MIN, frac)) });
+  patch({ floatHeightFrac: Math.min(FLOAT_FRAC_MAX, Math.max(FLOAT_FRAC_MIN, frac)) });
   savePrefs();
+}
+
+/** Toolbar height / status-bar height / nav-rail width (logical px) that the maximized window leaves clear. */
+export const FLOAT_FULL_TOP = 53;
+export const FLOAT_FULL_BOTTOM = 24;
+export const FLOAT_FULL_RIGHT = 62;
+
+/** The maximized floating window: the whole content area between the toolbar and the status bar, up to
+ *  the nav rail (kept visible so panels stay reachable). The size/position set before maximizing are
+ *  left untouched, so restoring brings the window back exactly as it was. */
+export function floatFullRect(lvw: number, lvh: number): { x: number; y: number; w: number; h: number } {
+  return {
+    // Left edge inset like any free window: the ✕ there must clear the app window's resize strip.
+    x: FLOAT_EDGE,
+    y: FLOAT_FULL_TOP,
+    w: Math.max(0, lvw - FLOAT_FULL_RIGHT - FLOAT_EDGE),
+    h: Math.max(0, lvh - FLOAT_FULL_TOP - FLOAT_FULL_BOTTOM),
+  };
+}
+
+/** Maximize the floating window to the whole content area, or restore it. */
+export function toggleFloatFull(): void {
+  patch({ floatFull: !get(videoState).floatFull });
+  if (typeof window !== 'undefined') {
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
+  }
 }
 
 // ── Map ⇄ video placement ────────────────────────────────────────────
