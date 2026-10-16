@@ -348,6 +348,8 @@
       <div class="s-row">
         <label class="s-label" for="ui-scale">{$t('settings.uiScale')}</label>
         <select id="ui-scale" class="s-select" value={uiScale} onchange={handleUiScaleChange}>
+          <option value={0.75}>75%</option>
+          <option value={0.85}>85%</option>
           <option value={1}>100%</option>
           <option value={1.25}>125%</option>
           <option value={1.5}>150%</option>
@@ -745,6 +747,10 @@
       <div class="s-row">
         <span class="s-label">{$t('settings.batteryAlert')}</span>
         <NumberStepper bind:value={batAlert} min={0} max={100} step={5} decimals={0} unit="%" onchange={onBatAlertChange} />
+      </div>
+      <div class="s-row">
+        <span class="s-label">{$t('settings.batteryDetails')}</span>
+        <Toggle checked={$settings.batteryShowDetails} onchange={(c) => settings.patch({ batteryShowDetails: c })} id="bat-details" />
       </div>
       <div class="s-row">
         <span class="s-label">{$t('settings.systemMessages')}</span>

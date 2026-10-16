@@ -669,6 +669,7 @@
       "surface": "Surface",
       "copy": "Copy"
     },
+    "zoom": "Digital zoom",
     "mirror": "Mirror horizontally",
     "codec": "Codec",
     "floatingWindow": "Floating window",
@@ -876,6 +877,7 @@
     "defaultPhTime": "Default PH Time",
     "alerts": "Alerts",
     "altitude": "Altitude",
+    "batteryDetails": "Show current & mAh",
     "batteryAlert": "Battery alert",
     "systemMessages": "System Messages",
     "sysMsgOff": "Off",

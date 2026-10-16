@@ -669,6 +669,7 @@
       "surface": "Darstellung",
       "copy": "Direkt"
     },
+    "zoom": "Digitaler Zoom",
     "mirror": "Horizontal spiegeln",
     "codec": "Codec",
     "floatingWindow": "Schwebendes Fenster",
@@ -876,6 +877,7 @@
     "defaultPhTime": "Standard-PH-Zeit",
     "alerts": "Warnungen",
     "altitude": "Höhe",
+    "batteryDetails": "Strom & mAh anzeigen",
     "batteryAlert": "Akku-Warnung",
     "systemMessages": "Systemmeldungen",
     "sysMsgOff": "Aus",

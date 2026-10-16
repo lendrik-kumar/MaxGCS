@@ -24,6 +24,11 @@
     setVideoResolution,
     setCameraFps,
     setVideoMirror,
+    videoZoom,
+    setVideoZoom,
+    zoomVideoWheel,
+    VIDEO_ZOOM_MIN,
+    VIDEO_ZOOM_MAX,
     setDisableHwAccel,
     setVideoKind,
     setRtspUrl,
@@ -357,7 +362,8 @@
 
 {#snippet body()}
   <div class="vp-body">
-    <div class="preview" style="aspect-ratio: {$videoState.aspect};">
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="preview" style="aspect-ratio: {$videoState.aspect}; --vz: {$videoZoom};" onwheel={zoomVideoWheel}>
       {#if $videoState.mjpegUrl}
         <!-- MJPEG multipart feed — off-thread reader where the WebView allows it, else an <img>
              whose per-part `load` carries both the frame count and the picture size. -->
@@ -693,6 +699,14 @@
     {/if}
 
     <div class="field-row">
+      <span class="label">{$t('video.zoom')}</span>
+      <input type="range" min={VIDEO_ZOOM_MIN} max={VIDEO_ZOOM_MAX} step="0.5" value={$videoZoom}
+        oninput={(e) => setVideoZoom(Number(e.currentTarget.value))} />
+      <span class="label">{$videoZoom.toFixed(1)}×</span>
+      <Button variant="standard" disabled={$videoZoom === 1} onclick={() => setVideoZoom(1)}>1×</Button>
+    </div>
+
+    <div class="field-row">
       <Toggle checked={$videoState.mirror} onchange={(c) => setVideoMirror(c)} id="vp-mirror" />
       <span class="label">{$t('video.mirror')}</span>
     </div>
@@ -783,6 +797,7 @@
   /* will-change: own compositing layer — see VideoWidget: keeps the 60 fps MJPEG <img> from
      dirtying shared layer tiles every frame on WebKitGTK. */
   .preview video { width: 100%; height: 100%; object-fit: contain; display: block; will-change: transform; }
+  .preview video, .preview img, .preview canvas { scale: var(--vz, 1); }
   .preview video.mirror { transform: scaleX(-1); }
   .preview video.hidden { visibility: hidden; }
   .preview img,

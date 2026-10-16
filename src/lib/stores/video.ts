@@ -1438,6 +1438,24 @@ export async function setVideoResolution(resolution: VideoResolution): Promise<v
   if (get(videoState).enabled) await startVideo();
 }
 
+/** Digital zoom of the live picture (1×…4×), applied by every video surface via CSS `scale`. Session
+ *  only — it resets to 1× when the app restarts, so a zoomed feed is never mistaken for the camera's
+ *  true framing on the next flight. */
+export const VIDEO_ZOOM_MIN = 1;
+export const VIDEO_ZOOM_MAX = 4;
+export const videoZoom = writable(1);
+
+export function setVideoZoom(zoom: number): void {
+  const z = Math.round(Math.max(VIDEO_ZOOM_MIN, Math.min(VIDEO_ZOOM_MAX, zoom)) * 10) / 10;
+  videoZoom.set(z);
+}
+
+/** Wheel handler shared by the video surfaces: scroll up = zoom in, 0.5× per notch. */
+export function zoomVideoWheel(e: WheelEvent): void {
+  e.preventDefault();
+  setVideoZoom(get(videoZoom) + (e.deltaY < 0 ? 0.5 : -0.5));
+}
+
 export function setVideoMirror(mirror: boolean): void {
   patch({ mirror });
   savePrefs();

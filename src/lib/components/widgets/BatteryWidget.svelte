@@ -137,11 +137,13 @@
   {/if}
 
   <span class="w-value">{voltage}</span>
-  <div class="w-secondary-row">
-    <span class="w-secondary">{current}</span>
-    <span class="w-secondary">{watt}</span>
-  </div>
-  <span class="w-tertiary">{mah}</span>
+  {#if $settings.batteryShowDetails}
+    <div class="w-secondary-row">
+      <span class="w-secondary">{current}</span>
+      <span class="w-secondary">{watt}</span>
+    </div>
+    <span class="w-tertiary">{mah}</span>
+  {/if}
 </div>
 
 <style>

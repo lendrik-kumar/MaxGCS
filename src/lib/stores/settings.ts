@@ -337,6 +337,8 @@ export interface AppSettings {
   /** Battery low-charge alert threshold (%). The battery widget enters its alert state below this, and
    *  in AUTO mode switches to show the lowest battery once any pack drops under it. 0 = disabled. */
   batteryAlertPct: number;
+  /** Battery widget: show current (A), power (W) and mAh drawn. Off = voltage bar + voltage only. */
+  batteryShowDetails: boolean;
   /** Per-widget battery selection: 'auto' or an instance id (as a string). Keyed by widget id
    *  ('battery' / 'battery2'). Lets each battery widget pin a specific pack. See MULTI_BATTERY.md. */
   batterySelect: Record<string, string>;
@@ -424,6 +426,7 @@ const defaults: AppSettings = {
   lastArduVehicleClass: 'plane',
   warnAltitudeM: 120,
   batteryAlertPct: 30,
+  batteryShowDetails: true,
   batterySelect: {},
   systemMessages: 'all',
   logLevel: 'warning',

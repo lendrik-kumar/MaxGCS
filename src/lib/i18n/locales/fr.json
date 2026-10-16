@@ -641,6 +641,7 @@
       "native": "Flux : go2rtc (natif)",
       "ffmpeg": "Flux : repli ffmpeg"
     },
+    "zoom": "Zoom numérique",
     "mirror": "Miroir horizontal",
     "codec": "Codec",
     "floatingWindow": "Fenêtre flottante",
@@ -847,6 +848,7 @@
     "defaultPhTime": "Durée PH par défaut",
     "alerts": "Alertes",
     "altitude": "Altitude",
+    "batteryDetails": "Afficher courant et mAh",
     "batteryAlert": "Alerte batterie",
     "alertThresholdsHint": "Seuils d'alerte. 0 = désactivé.",
     "hudWidgets": "Widgets HUD",

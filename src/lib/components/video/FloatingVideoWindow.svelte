@@ -31,6 +31,8 @@
     setMapLocation,
     toggleFloating,
     reportMjpegError,
+    videoZoom,
+    zoomVideoWheel,
     FLOAT_HEIGHT_MIN,
     FLOAT_HEIGHT_MAX,
   } from '$lib/stores/video';
@@ -294,7 +296,7 @@
          instead, and the body is omitted. Double-click the video → the map jumps into this frame. -->
     {#if !mapHere}
       <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div class="fw-body" onpointerdown={onBodyPointerDown} ondblclick={() => setMapLocation('floating')}>
+      <div class="fw-body" style="--vz: {$videoZoom};" onpointerdown={onBodyPointerDown} onwheel={zoomVideoWheel} ondblclick={() => setMapLocation('floating')}>
         {#if $videoState.status === 'live' && $videoState.mjpegUrl}
           <!-- Native / MJPEG feed (no MediaStream): drawn by the off-thread reader where the WebView
                allows it, otherwise the plain <img> multipart stream. -->
@@ -371,6 +373,7 @@
        layer tiles every frame on WebKitGTK. */
     will-change: transform;
   }
+  .fw-body video, .fw-body img, .fw-body canvas { scale: var(--vz, 1); }
   .fw-body video.mirror,
   .fw-body img.mirror,
   .fw-body canvas.mirror {
