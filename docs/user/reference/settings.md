@@ -16,7 +16,7 @@ The Settings panel — the Interface and Data tabs, each grouped into labelled s
 | Setting | What it does | Default |
 |---|---|---|
 | **Language** | The UI language. | English |
-| **UI scale** | Scale the whole interface — 100 %, 125 % or 150 % (for high-DPI or far-away screens). | 100 % |
+| **UI scale** | Scale the whole interface — 75 %, 85 %, 100 %, 125 % or 150 % (for high-DPI or far-away screens). | 100 % |
 
 ### Map
 
