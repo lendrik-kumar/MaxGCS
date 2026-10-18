@@ -698,6 +698,8 @@
     "ratioAuto": "Auto (match the source)",
     "ratioFill": "Stretch to fill",
     "displayRatioHint": "Auto shows analog goggle video (480p/576p) at its true 4:3 and everything else at its own shape. Pick 4:3 or 16:9 to force one. Stretch to fill covers the whole full-screen view with no black bars — handy on a TV.",
+    "canvas1080": "Fixed 1920×1080 canvas",
+    "canvas1080Hint": "Shows every picture at its own size in the centre of a black 1920×1080 canvas — never stretched, cropped or enlarged (a source bigger than 1080p is scaled down to fit). Live video and recordings are then always 1920×1080. Turn it off to show the picture at its own shape; the Display ratio setting applies then. Restarts a running capture or RTSP-MJPEG feed.",
     "zoom": "Zoom",
     "zoomHint": "Drag the picture to pan, or swipe sideways / Shift + wheel. Over the floating or full-screen video the mouse wheel changes the zoom. In the floating window, drag the bar along its top edge to move the window. This is digital zoom — it enlarges what the capture has, it can't add detail.",
     "zoomCycle": "Zoom {n}× — click to change",

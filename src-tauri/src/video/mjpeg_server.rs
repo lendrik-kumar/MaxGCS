@@ -169,11 +169,17 @@ impl MjpegServer {
     /// can't run as a second process alongside the live one and has to be a second *output* of this
     /// same one. That also means toggling it on/off goes through `stop()` + `start()` again, same as
     /// any other capture-spec change.
+    ///
+    /// `canvas`: place every frame — live and recorded — at the centre of a black 1920×1080 canvas
+    /// (`super::canvas`). It needs decoded frames, so it replaces any stream-copy with a decode →
+    /// filter → re-encode, and (RTSP) steers a GPU-resident VAAPI chain onto the software one — see
+    /// `effective_transcode`.
     pub fn start(
         &self,
         on_ended: EndedHook,
         source: &MjpegSource,
         record_path: Option<PathBuf>,
+        canvas: bool,
     ) -> Result<u16, String> {
         self.stop();
 
@@ -200,52 +206,16 @@ impl MjpegServer {
             MjpegSource::Device(spec) => {
                 args.extend(["-fflags".into(), "nobuffer".into()]);
                 args.extend(super::native::input_args(spec));
-                if let Some(rec_path) = &record_path {
-                    // Splitting for a second (enhanced) output needs decoded frames regardless of
-                    // whether the input is already MJPEG, so recording always forces the live leg
-                    // through the transcode path too — no more stream-copy while recording is on.
-                    args.extend([
-                        "-filter_complex".into(),
-                        format!("[0:v]split=2[live][rec];[rec]{RECORD_ENHANCE_FILTERS}[recf]"),
-                        "-map".into(),
-                        "[live]".into(),
-                        "-c:v".into(),
-                        "mjpeg".into(),
-                        "-q:v".into(),
-                        "5".into(),
-                    ]);
-                    record_tail = Some(vec![
-                        "-map".into(),
-                        "[recf]".into(),
-                        "-c:v".into(),
-                        "libx264".into(),
-                        "-preset".into(),
-                        "veryfast".into(),
-                        "-crf".into(),
-                        "20".into(),
-                        "-pix_fmt".into(),
-                        "yuv420p".into(),
-                        // Matroska, not MP4: `stop()` ends the feed with `Child::kill()` (no graceful
-                        // shutdown, since the device must release immediately for a mode change), and
-                        // MP4 only writes its index (`moov`) at a clean close — a killed MP4 recording
-                        // comes out with no index, unplayable in most players. Matroska is designed to
-                        // survive exactly this: no trailing global index to lose, so a hard-killed file
-                        // still opens with everything encoded before the kill.
-                        "-f".into(),
-                        "matroska".into(),
-                        rec_path.to_string_lossy().into_owned(),
-                    ]);
-                } else if super::native::needs_transcode(&spec.codec) {
-                    // Raw / H.264 / auto → re-encode to MJPEG for the multipart sink.
-                    args.extend(["-c:v".into(), "mjpeg".into(), "-q:v".into(), "5".into()]);
-                } else {
-                    // The camera already emits MJPEG: pass the packets straight through. No decode, no
-                    // encode, no colour conversion — cheaper than any hardware transcode could ever be,
-                    // so there is deliberately nothing to accelerate here.
-                    args.extend(["-c".into(), "copy".into()]);
-                }
+                let (live, tail) = device_output_args(
+                    super::native::needs_transcode(&spec.codec),
+                    record_path.as_deref().map(|p| p.to_string_lossy().into_owned()),
+                    canvas,
+                );
+                args.extend(live);
+                record_tail = tail;
             }
             MjpegSource::Rtsp { url, transcode } => {
+                let transcode = &effective_transcode(*transcode, canvas);
                 match transcode {
                     RtspTranscode::V4l2m2m => args.extend(["-c:v".into(), "h264_v4l2m2m".into()]),
                     RtspTranscode::Vaapi(node) => args.extend([
@@ -281,6 +251,10 @@ impl MjpegServer {
                     (*url).into(),
                     "-an".into(),
                 ]);
+                // The canvas filter sits between decode and encode, on the output side.
+                if canvas && !matches!(transcode, RtspTranscode::Copy) {
+                    args.extend(["-vf".into(), super::canvas::filter()]);
+                }
                 match transcode {
                     RtspTranscode::Copy => args.extend(["-c".into(), "copy".into()]),
                     // `-async_depth 1`: the VAAPI encoders pipeline 2 frames by default for
@@ -394,6 +368,89 @@ impl MjpegServer {
 impl Drop for MjpegServer {
     fn drop(&mut self) {
         self.stop();
+    }
+}
+
+/// The transcode that actually runs for an RTSP source once the canvas is taken into account.
+///
+/// The canvas is a software filter, so it needs decoded frames in system memory:
+/// * `Copy` can no longer pass packets through — it becomes a software decode → filter → re-encode;
+/// * `Vaapi` keeps frames in GPU memory end-to-end (`-hwaccel_output_format vaapi`), which a CPU filter
+///   cannot read, and a half-hardware chain is slower than software anyway (see `video::ffmpeg`) —
+///   so it also becomes `Software`;
+/// * `V4l2m2m` decodes into ordinary memory, so it keeps its hardware decoder.
+pub fn effective_transcode(transcode: RtspTranscode, canvas: bool) -> RtspTranscode {
+    match (canvas, transcode) {
+        (true, RtspTranscode::Copy | RtspTranscode::Vaapi(_)) => RtspTranscode::Software,
+        (_, t) => t,
+    }
+}
+
+/// Output-side ffmpeg arguments for a capture device: the live MJPEG leg, plus the optional recording
+/// tail that follows the live sink (see the multi-output note in `start`).
+///
+/// With `canvas` both legs go through `canvas::filter()`, after the recording's enhancement chain
+/// (denoise/sharpen at the source size is cheaper than at 1080p), so the recorded `.mkv` is 1920×1080
+/// exactly like the live feed. Either way a canvas forces decoded frames — no `-c copy`.
+fn device_output_args(
+    needs_transcode: bool,
+    rec_path: Option<String>,
+    canvas: bool,
+) -> (Vec<String>, Option<Vec<String>>) {
+    let mjpeg_enc: [String; 4] = ["-c:v".into(), "mjpeg".into(), "-q:v".into(), "5".into()];
+    if let Some(rec_path) = rec_path {
+        // Splitting for a second (enhanced) output needs decoded frames regardless of whether the
+        // input is already MJPEG, so recording always forces the live leg through the transcode path
+        // too — no more stream-copy while recording is on.
+        let (graph, live_label) = if canvas {
+            let c = super::canvas::filter();
+            (
+                format!(
+                    "[0:v]split=2[live][rec];[live]{c}[livec];[rec]{RECORD_ENHANCE_FILTERS},{c}[recf]"
+                ),
+                "[livec]",
+            )
+        } else {
+            (format!("[0:v]split=2[live][rec];[rec]{RECORD_ENHANCE_FILTERS}[recf]"), "[live]")
+        };
+        let mut live: Vec<String> =
+            vec!["-filter_complex".into(), graph, "-map".into(), live_label.into()];
+        live.extend(mjpeg_enc);
+        let tail = vec![
+            "-map".into(),
+            "[recf]".into(),
+            "-c:v".into(),
+            "libx264".into(),
+            "-preset".into(),
+            "veryfast".into(),
+            "-crf".into(),
+            "20".into(),
+            "-pix_fmt".into(),
+            "yuv420p".into(),
+            // Matroska, not MP4: `stop()` ends the feed with `Child::kill()` (no graceful shutdown,
+            // since the device must release immediately for a mode change), and MP4 only writes its
+            // index (`moov`) at a clean close — a killed MP4 recording comes out with no index,
+            // unplayable in most players. Matroska is designed to survive exactly this: no trailing
+            // global index to lose, so a hard-killed file still opens with everything encoded before
+            // the kill.
+            "-f".into(),
+            "matroska".into(),
+            rec_path,
+        ];
+        (live, Some(tail))
+    } else if canvas {
+        // Decode → canvas → MJPEG encode, even for a camera that already emits MJPEG.
+        let mut live: Vec<String> = vec!["-vf".into(), super::canvas::filter()];
+        live.extend(mjpeg_enc);
+        (live, None)
+    } else if needs_transcode {
+        // Raw / H.264 / auto → re-encode to MJPEG for the multipart sink.
+        (mjpeg_enc.to_vec(), None)
+    } else {
+        // The camera already emits MJPEG: pass the packets straight through. No decode, no encode, no
+        // colour conversion — cheaper than any hardware transcode could ever be, so there is
+        // deliberately nothing to accelerate here.
+        (vec!["-c".into(), "copy".into()], None)
     }
 }
 
@@ -934,5 +991,116 @@ mod tests {
         assert!(!wants_raw("GET /raw=1 HTTP/1.1\r\n\r\n"));
         // Order among parameters must not matter.
         assert!(wants_raw("GET /?x=1&raw=1 HTTP/1.1\r\n\r\n"));
+    }
+
+    // ── canvas wiring ────────────────────────────────────────────────────────────────────────────
+
+    fn joined(v: &[String]) -> String {
+        v.join(" ")
+    }
+
+    #[test]
+    fn device_without_canvas_is_unchanged() {
+        let (live, tail) = device_output_args(false, None, false);
+        assert_eq!(joined(&live), "-c copy");
+        assert!(tail.is_none());
+        let (live, _) = device_output_args(true, None, false);
+        assert_eq!(joined(&live), "-c:v mjpeg -q:v 5");
+        let (live, tail) = device_output_args(false, Some("out.mkv".into()), false);
+        assert!(joined(&live).contains("[0:v]split=2[live][rec];[rec]hqdn3d"));
+        assert!(!joined(&live).contains("pad="), "no canvas requested: {live:?}");
+        assert_eq!(tail.unwrap().last().map(String::as_str), Some("out.mkv"));
+    }
+
+    #[test]
+    fn device_canvas_replaces_stream_copy_with_decode_filter_encode() {
+        // A camera that already sends MJPEG used to be `-c copy`; the canvas needs the pixels.
+        let (live, tail) = device_output_args(false, None, true);
+        let j = joined(&live);
+        assert!(j.starts_with("-vf scale=") && j.contains("pad=1920:1080"), "{j}");
+        assert!(j.ends_with("-c:v mjpeg -q:v 5"), "{j}");
+        assert!(!j.contains("copy"), "{j}");
+        assert!(tail.is_none());
+    }
+
+    #[test]
+    fn device_canvas_applies_to_both_the_live_and_the_recorded_leg() {
+        let (live, tail) = device_output_args(false, Some("rec.mkv".into()), true);
+        let graph = live.iter().find(|a| a.starts_with("[0:v]split")).expect("filter_complex graph");
+        // Live leg: canvas, then mapped. Recorded leg: enhance first, THEN canvas, then mapped.
+        assert!(graph.contains("[live]scale="), "{graph}");
+        assert!(graph.contains("setsar=1[livec]"), "{graph}");
+        let rec = graph.split(';').find(|p| p.starts_with("[rec]")).unwrap();
+        assert!(rec.find("hqdn3d").unwrap() < rec.find("pad=1920:1080").unwrap(), "enhance before canvas: {rec}");
+        assert!(rec.ends_with("setsar=1[recf]"), "{rec}");
+        let j = joined(&live);
+        assert!(j.contains("-map [livec]") && !j.contains("-map [live] "), "{j}");
+        let tail = tail.unwrap();
+        assert_eq!(&tail[..2], ["-map", "[recf]"]);
+        assert!(joined(&tail).contains("-pix_fmt yuv420p -f matroska rec.mkv"));
+    }
+
+    #[test]
+    fn canvas_steers_rtsp_off_copy_and_gpu_chains_only() {
+        use RtspTranscode::*;
+        assert_eq!(effective_transcode(Copy, true), Software);
+        assert_eq!(effective_transcode(Vaapi("/dev/dri/renderD128"), true), Software);
+        assert_eq!(effective_transcode(V4l2m2m, true), V4l2m2m);
+        assert_eq!(effective_transcode(Software, true), Software);
+        // Off: nothing changes.
+        assert_eq!(effective_transcode(Copy, false), Copy);
+        assert_eq!(effective_transcode(Vaapi("/dev/dri/renderD128"), false), Vaapi("/dev/dri/renderD128"));
+    }
+
+    /// End-to-end with the real ffmpeg (skipped when none is installed): feeds a 720×480 test picture
+    /// through the exact output arguments `start()` uses for a capture device — live MJPEG leg and
+    /// the recorded leg — and checks both come out 1920×1080 with the picture untouched at the centre.
+    #[test]
+    fn real_ffmpeg_live_and_recorded_legs_are_both_1080p() {
+        let Some(ff) = crate::video::ffmpeg::find_ffmpeg() else {
+            eprintln!("ffmpeg not found — skipping the end-to-end pipeline check");
+            return;
+        };
+        let probe = ff.with_file_name(if cfg!(windows) { "ffprobe.exe" } else { "ffprobe" });
+        if !probe.is_file() {
+            eprintln!("ffprobe not found next to ffmpeg — skipping");
+            return;
+        }
+        let dir = std::env::temp_dir().join(format!("maxgcs-canvas-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let live_path = dir.join("live.mjpeg");
+        let rec_path = dir.join("rec.mkv");
+
+        let (live, tail) = device_output_args(
+            false,
+            Some(rec_path.to_string_lossy().into_owned()),
+            true,
+        );
+        let mut args: Vec<String> = vec![
+            "-hide_banner".into(), "-loglevel".into(), "error".into(), "-y".into(),
+            // Stand-in for the capture device: a 720×480 analog-SD-sized picture, white on black.
+            "-f".into(), "lavfi".into(), "-i".into(),
+            "color=c=white:size=720x480:rate=25:duration=2".into(),
+        ];
+        args.extend(live);
+        args.extend(["-f".into(), "mpjpeg".into(), live_path.to_string_lossy().into_owned()]);
+        args.extend(tail.unwrap());
+        let out = Command::new(&ff).args(&args).output().expect("run ffmpeg");
+        assert!(out.status.success(), "ffmpeg failed: {}", String::from_utf8_lossy(&out.stderr));
+
+        // Both outputs: 1920x1080, with frames.
+        for (name, path, fmt) in [("live", &live_path, "mpjpeg"), ("recorded", &rec_path, "matroska")] {
+            let mut cmd = Command::new(&probe);
+            cmd.args(["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height,sample_aspect_ratio", "-of", "csv=p=0"]);
+            if fmt == "mpjpeg" {
+                cmd.args(["-f", "mpjpeg"]);
+            }
+            let r = cmd.arg(path).output().expect("run ffprobe");
+            let line = String::from_utf8_lossy(&r.stdout).trim().to_string();
+            assert!(line.starts_with("1920,1080"), "{name} leg is not 1920x1080: {line:?} {}", String::from_utf8_lossy(&r.stderr));
+            // Square pixels: the placed picture must not be stretched again by a player.
+            assert!(line.ends_with(",1:1") || line.ends_with(",N/A") || line.ends_with(",0:1"), "{name} leg SAR: {line:?}");
+        }
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -17,6 +17,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { videoStream, videoState, bindVideoEl, setMapLocation, setWidgetRect, reportMjpegError } from '$lib/stores/video';
   import { canvasSink, mjpegSink } from '$lib/controllers/mjpegSink';
+  import { canvasFrame } from '$lib/controllers/videoCanvas';
   import VideoReconnectOverlay from '$lib/components/video/VideoReconnectOverlay.svelte';
 
   let { width = 300, height = 150 }: { width?: number; height?: number } = $props();
@@ -69,7 +70,7 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
-<div bind:this={cardEl} class="widget-card" style="width:{width}px; height:{height}px;" ondblclick={swapHere}>
+<div bind:this={cardEl} class="widget-card" class:canvas={$videoState.canvas1080 && $videoState.status === 'live'} style="width:{width}px; height:{height}px;" ondblclick={swapHere}>
   {#if mapHere}
     <!-- The map is overlaid here by +page (top-level). Keep an empty sized tile underneath. -->
     <div class="placeholder map-here"></div>
@@ -86,6 +87,7 @@
     <!-- svelte-ignore a11y_media_has_caption -->
     <video
       bind:this={videoEl}
+      use:canvasFrame
       autoplay
       muted
       playsinline
@@ -109,6 +111,10 @@
     border-radius: 8px;
     padding: 3px;
     overflow: hidden;
+  }
+  /* The fixed 1920×1080 canvas: the black padding around the picture is part of the picture. */
+  .widget-card.canvas {
+    background: #000;
   }
   video,
   img,

@@ -676,6 +676,8 @@
     "ratioAuto": "Auto (selon la source)",
     "ratioFill": "Étirer pour remplir",
     "displayRatioHint": "Auto affiche la vidéo analogique des lunettes (480p/576p) en vrai 4:3 et tout le reste dans son propre format. Choisissez 4:3 ou 16:9 pour en forcer un. « Étirer pour remplir » couvre toute la vue plein écran sans bandes noires — pratique sur une TV.",
+    "canvas1080": "Canevas fixe 1920×1080",
+    "canvas1080Hint": "Affiche chaque image à sa propre taille au centre d'un canevas noir 1920×1080 — jamais étirée, rognée ni agrandie (une source au-delà de 1080p est réduite pour tenir). La vidéo en direct et les enregistrements sont alors toujours en 1920×1080. Désactivé, l'image garde son propre format et le réglage Format d'image s'applique. Redémarre une capture ou un flux RTSP-MJPEG en cours.",
     "zoom": "Zoom",
     "zoomHint": "Faites glisser l'image pour la déplacer, ou balayez latéralement / Maj + molette. Sur la vidéo flottante ou plein écran, la molette change le zoom. Dans la fenêtre flottante, faites glisser la barre en haut pour déplacer la fenêtre. C'est un zoom numérique : il agrandit ce que la capture contient, sans ajouter de détails.",
     "zoomCycle": "Zoom {n}× — cliquer pour changer",

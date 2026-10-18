@@ -25,6 +25,7 @@
     setCameraFps,
     setVideoMirror,
     setDisplayRatio,
+    setCanvas1080,
     videoDisplayAspect,
     setVideoZoom,
     videoZoomTransform,
@@ -61,6 +62,8 @@
   } from '$lib/stores/video';
   import { canvasSink, mjpegSink, mjpegStats } from '$lib/controllers/mjpegSink';
   import { videoZoom } from '$lib/controllers/videoZoom';
+  import { canvasFrame } from '$lib/controllers/videoCanvas';
+  import { CANVAS_W, CANVAS_H } from '$lib/helpers/videoCanvas';
   import SegmentedToggle from '$lib/components/panel/SegmentedToggle.svelte';
   import {
     codecsFor,
@@ -283,6 +286,19 @@
   // getUserMedia). The MJPEG reader counts its own drawn frames, which is exact on every platform;
   // the <img> fallback can only count where the WebView fires `load` per part (WebView2 does,
   // WebKitGTK fires it once), hence the configured rate as a last resort.
+  // Picture size for the info line. With the fixed canvas the output is always 1920×1080; show the
+  // source it was placed from where the frontend knows it (device mode / WebView-decoded size).
+  const infoSize = $derived.by(() => {
+    const s = $videoState;
+    if (!s.canvas1080) return `${s.width ?? '–'}×${s.height ?? '–'}`;
+    const src =
+      s.kind === 'native'
+        ? `${s.nativeSel.width}×${s.nativeSel.height}`
+        : !s.mjpegUrl && s.width && s.height
+          ? `${s.width}×${s.height}`
+          : null;
+    return src ? `${src} → ${CANVAS_W}×${CANVAS_H}` : `${CANVAS_W}×${CANVAS_H}`;
+  });
   const fpsText = $derived.by(() => {
     const s = $videoState;
     const drawn = $canvasSink ? ($mjpegStats?.fpsOut ?? 0) : mjpegFps;
@@ -389,6 +405,7 @@
         <!-- svelte-ignore a11y_media_has_caption -->
         <video
           bind:this={videoEl}
+          use:canvasFrame
           autoplay
           muted
           playsinline
@@ -431,7 +448,7 @@
 
     {#if $videoState.status === 'live'}
       <div class="info-line">
-        {$videoState.width ?? '–'}×{$videoState.height ?? '–'}
+        {infoSize}
         · {fpsText} fps
         {#if streamCodec}· {streamCodec}{/if}
         {#if streamBitrate}· {streamBitrate}{/if}
@@ -724,9 +741,16 @@
       <span class="label">{$t('video.mirror')}</span>
     </div>
 
+    <div class="field-row">
+      <Toggle checked={$videoState.canvas1080} onchange={(c) => void setCanvas1080(c)} id="vp-canvas1080" />
+      <span class="label">{$t('video.canvas1080')}</span>
+    </div>
+    <p class="hint">{$t('video.canvas1080Hint')}</p>
+
     <label class="field">
       <span class="label">{$t('video.displayRatio')}</span>
       <select
+        disabled={$videoState.canvas1080}
         value={$videoState.displayRatio}
         onchange={(e) => setDisplayRatio((e.currentTarget as HTMLSelectElement).value as DisplayRatio)}
       >

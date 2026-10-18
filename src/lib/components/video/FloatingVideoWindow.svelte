@@ -26,6 +26,7 @@
     videoStream,
     videoState,
     videoDisplayAspect,
+    videoStretchFill,
     bindVideoEl,
     setFloatPos,
     setFloatSnapped,
@@ -49,6 +50,7 @@
   } from '$lib/stores/video';
   import { canvasSink, mjpegSink } from '$lib/controllers/mjpegSink';
   import { videoZoom } from '$lib/controllers/videoZoom';
+  import { canvasFrame } from '$lib/controllers/videoCanvas';
   import VideoReconnectOverlay from '$lib/components/video/VideoReconnectOverlay.svelte';
 
   // The page's UI scale (1 = 100 %). This window sits inside the `.ui-scale` layer, which is scaled up
@@ -93,7 +95,7 @@
   // Maximized, the window is the whole content area, which is rarely the picture's shape: the picture
   // is fitted inside it (black bars on the sides) — or fills it all when the ratio is "Stretch to fill".
   const pic = $derived(
-    full && $videoState.displayRatio !== 'fill' ? fitContain(aspect, width, height) : null,
+    full && !$videoStretchFill ? fitContain(aspect, width, height) : null,
   );
   const picStyle = $derived(
     pic
@@ -354,7 +356,7 @@
         {:else if $videoState.status === 'live'}
           <div class="zoom-layer" style={picStyle} style:transform={$videoZoomTransform}>
             <!-- svelte-ignore a11y_media_has_caption -->
-            <video bind:this={videoEl} autoplay muted playsinline class:mirror={$videoState.mirror}></video>
+            <video bind:this={videoEl} use:canvasFrame autoplay muted playsinline class:mirror={$videoState.mirror}></video>
           </div>
         {:else}
           <div class="fw-ph">{$videoState.status === 'starting' ? $t('video.starting') : $t('video.off')}</div>

@@ -87,8 +87,9 @@
   import WidgetPanel from "$lib/components/WidgetPanel.svelte";
   import { LARGE_BASE_VMIN } from "$lib/config/widgetRegistry";
   import FloatingVideoWindow from "$lib/components/video/FloatingVideoWindow.svelte";
-  import { initVideo, videoState, videoStream, bindVideoEl, setMapLocation, setFloatHeightFrac, setFloatPos, registerPiPElement, reportMjpegError, floatWindowSize, clampFloatFrac, toggleFloatFull, floatFullRect, FLOAT_SNAP_BOTTOM, FLOAT_TOP_SAFE, FLOAT_EDGE, clampFloatPos, videoDisplayAspect, fitContain, videoZoomTransform, setVideoZoom, VIDEO_ZOOM_LEVELS } from "$lib/stores/video";
+  import { initVideo, videoState, videoStream, bindVideoEl, setMapLocation, setFloatHeightFrac, setFloatPos, registerPiPElement, reportMjpegError, floatWindowSize, clampFloatFrac, toggleFloatFull, floatFullRect, FLOAT_SNAP_BOTTOM, FLOAT_TOP_SAFE, FLOAT_EDGE, clampFloatPos, videoDisplayAspect, videoStretchFill, fitContain, videoZoomTransform, setVideoZoom, VIDEO_ZOOM_LEVELS } from "$lib/stores/video";
   import { videoZoom } from "$lib/controllers/videoZoom";
+  import { canvasFrame } from "$lib/controllers/videoCanvas";
   import { canvasSink, mjpegSink } from "$lib/controllers/mjpegSink";
   import { lowPowerActive } from "$lib/stores/lowPower";
   import { initPulseBlink } from "$lib/stores/pulseBlink";
@@ -318,7 +319,7 @@
   let mapWrapW = $state(0);
   let mapWrapH = $state(0);
   const mapVideoBox = $derived(
-    $videoState.displayRatio === 'fill'
+    $videoStretchFill
       ? { w: mapWrapW, h: mapWrapH }
       : fitContain($videoDisplayAspect, mapWrapW, mapWrapH),
   );
@@ -2759,6 +2760,7 @@
         <video
           class="map-video"
           class:mirror={$videoState.mirror}
+          use:canvasFrame
           bind:this={mapVideoEl}
           autoplay
           muted

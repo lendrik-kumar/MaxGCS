@@ -29,6 +29,7 @@ import {
   validateSelection,
 } from '$lib/helpers/videoCapabilities';
 import { setMjpegSinkHandlers, startMjpegSink, stopMjpegSink } from '$lib/controllers/mjpegSink';
+import { CANVAS_W, CANVAS_H, CANVAS_ASPECT } from '$lib/helpers/videoCanvas';
 
 export interface VideoDevice {
   deviceId: string;
@@ -120,6 +121,12 @@ export interface VideoState {
   mirror: boolean;
   /** Display ratio mode — see `DisplayRatio` / `resolveDisplayAspect`. Persisted. */
   displayRatio: DisplayRatio;
+  /** Fixed 1920×1080 canvas: every picture sits at the centre of a black 1920×1080 canvas at its own
+   *  size (never stretched, cropped or upscaled). The backend pads the frames it encodes (live MJPEG +
+   *  recordings); the WebView-decoded surfaces (camera / WebRTC) place the picture the same way. While
+   *  on, the display shape is always 16:9 (the canvas) and the Display ratio setting does not apply.
+   *  Persisted; on by default. */
+  canvas1080: boolean;
   /** Digital zoom of the picture, one of `VIDEO_ZOOM_LEVELS`. One value for every video surface (panel
    *  preview, floating window, full-screen view). Runtime-only: resets when video stops. */
   zoom: number;
@@ -182,6 +189,7 @@ interface VideoPrefs {
   nativeFps: number;
   disableHwAccel: boolean;
   displayRatio: DisplayRatio;
+  canvas1080: boolean;
   mirror: boolean;
   floating: boolean;
   floatSnapped: boolean;
@@ -207,6 +215,7 @@ const PREF_DEFAULTS: VideoPrefs = {
   nativeFps: 30,
   disableHwAccel: false,
   displayRatio: 'auto',
+  canvas1080: true,
   mirror: false,
   floating: false,
   floatSnapped: true,
@@ -244,6 +253,7 @@ function loadPrefs(): VideoPrefs {
         displayRatio: DISPLAY_RATIOS.includes(p.displayRatio as DisplayRatio)
           ? (p.displayRatio as DisplayRatio)
           : 'auto',
+        canvas1080: p.canvas1080 ?? true,
       };
     }
   } catch {
@@ -275,6 +285,7 @@ function savePrefs(): void {
         nativeFps: s.nativeSel.fps,
         disableHwAccel: s.disableHwAccel,
         displayRatio: s.displayRatio,
+        canvas1080: s.canvas1080,
         mirror: s.mirror,
         floating: s.floating,
         floatSnapped: s.floatSnapped,
@@ -318,6 +329,7 @@ const INITIAL: VideoState = {
   activeTranscode: null,
   disableHwAccel: boot.disableHwAccel,
   displayRatio: boot.displayRatio,
+  canvas1080: boot.canvas1080,
   zoom: 1,
   panX: 0,
   panY: 0,
@@ -356,7 +368,10 @@ export function resolveDisplayAspect(
   width: number | null,
   height: number | null,
   sourceAspect: number,
+  canvas = false,
 ): number {
+  // The fixed canvas is the display shape; the picture inside it keeps its own.
+  if (canvas) return CANVAS_ASPECT;
   if (ratio === '4:3') return 4 / 3;
   if (ratio === '16:9') return 16 / 9;
   // auto / fill: the source's own shape, except analog SD which is really 4:3.
@@ -368,7 +383,20 @@ export function resolveDisplayAspect(
  *  (panel preview, floating window, full-screen swap, the map frame that mirrors the window) sizes from
  *  this one value, so they never disagree. */
 export const videoDisplayAspect = derived(videoState, (s) =>
-  resolveDisplayAspect(s.displayRatio, s.width, s.height, s.aspect),
+  resolveDisplayAspect(s.displayRatio, s.width, s.height, s.aspect, s.canvas1080),
+);
+
+/** "Stretch to fill" (full-screen view covers the whole area, no bars). Not available with the fixed
+ *  canvas on — stretching the 16:9 canvas over a different-shaped area would stretch the picture. */
+export const videoStretchFill = derived(videoState, (s) => s.displayRatio === 'fill' && !s.canvas1080);
+
+/** The size of a picture the WebView decodes itself (camera / WebRTC), for placing it on the canvas.
+ *  `null` when nothing needs placing: canvas off, no live size yet, or a backend feed (native / RTSP
+ *  MJPEG) whose frames the backend has already padded to the canvas. */
+export const videoCanvasSource = derived(videoState, (s) =>
+  s.canvas1080 && !s.mjpegUrl && s.kind !== 'native' && s.width && s.height
+    ? { w: s.width, h: s.height }
+    : null,
 );
 
 /** Largest `aspect`-shaped box that fits inside boxW × boxH (CSS `contain`, but explicit so the picture
@@ -488,6 +516,7 @@ async function startNativeMjpeg(
   sel: NativeSelection,
   id: string,
   record: boolean,
+  canvas: boolean,
 ): Promise<{ url: string; transcode: string; recordingPath: string | null }> {
   return await invoke<{ url: string; transcode: string; recordingPath: string | null }>('video_native_mjpeg_start', {
     id,
@@ -496,6 +525,7 @@ async function startNativeMjpeg(
     height: sel.height,
     fps: sel.fps,
     record,
+    canvas,
   });
 }
 
@@ -734,6 +764,7 @@ async function startMjpegPath(url: string, requireCopy = false): Promise<boolean
       // Two vetoes, either of which forces the software transcode: the user's explicit setting, and
       // the automatic one after repeated failures.
       allowHwDecode: !get(videoState).disableHwAccel && rtspMjpegFailures < 2,
+      canvas: get(videoState).canvas1080,
     });
     // Stopped while we were away? The awaits above straddle a Stop easily — the backend's hardware
     // probe alone can take seconds on a first start. Publishing 'live' + a URL regardless put the
@@ -1224,7 +1255,7 @@ export async function startNative(): Promise<void> {
   savePrefs();
   const sel = st.nativeSel;
   try {
-    const { url, transcode, recordingPath } = await startNativeMjpeg(sel, id, st.recording);
+    const { url, transcode, recordingPath } = await startNativeMjpeg(sel, id, st.recording, st.canvas1080);
     // Same straddled-Stop hazard as the RTSP path: the backend holds this call until the capture
     // produces its first bytes, so a Stop in between runs its `stopNativeMjpeg` before this server
     // even exists. Undo it rather than announcing a feed nobody asked for any more.
@@ -1238,9 +1269,10 @@ export async function startNative(): Promise<void> {
       activeTranscode: transcode,
       error: null,
       rtspEngine: 'ffmpeg',
-      width: sel.width,
-      height: sel.height,
-      aspect: sel.width / sel.height,
+      // With the canvas the backend sends 1920×1080 frames whatever the device mode is.
+      width: st.canvas1080 ? CANVAS_W : sel.width,
+      height: st.canvas1080 ? CANVAS_H : sel.height,
+      aspect: st.canvas1080 ? CANVAS_ASPECT : sel.width / sel.height,
       recordingPath,
     });
   } catch (e) {
@@ -1515,6 +1547,18 @@ export function setVideoMirror(mirror: boolean): void {
 export function setDisplayRatio(displayRatio: DisplayRatio): void {
   patch({ displayRatio });
   savePrefs();
+}
+
+/** Turn the fixed 1920×1080 canvas on/off. The backend pads the frames it encodes, so a running
+ *  native / RTSP-MJPEG feed restarts (like any other capture-spec change); camera and WebRTC feeds just
+ *  re-place the picture and need no restart. */
+export async function setCanvas1080(canvas1080: boolean): Promise<void> {
+  const st = get(videoState);
+  if (st.canvas1080 === canvas1080) return;
+  patch({ canvas1080 });
+  savePrefs();
+  if (!st.enabled) return;
+  if (st.kind === 'native' || (st.kind === 'rtsp' && st.mjpegUrl)) await startActive();
 }
 
 // ── Digital zoom ─────────────────────────────────────────────────────
