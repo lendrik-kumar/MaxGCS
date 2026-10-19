@@ -678,8 +678,6 @@
     "displayRatioHint": "Auto affiche la vidéo analogique des lunettes (480p/576p) en vrai 4:3 et tout le reste dans son propre format. Choisissez 4:3 ou 16:9 pour en forcer un. « Étirer pour remplir » couvre toute la vue plein écran sans bandes noires — pratique sur une TV.",
     "canvas1080": "Canevas fixe 1920×1080",
     "canvas1080Hint": "Produit une vidéo 1920×1080 : chaque image est mise à l'échelle pour tenir dans le cadre 1920×1080, proportions conservées, et centrée sur du noir — une caméra 720×480 devient 1620×1080, une 1280×720 remplit le cadre, la 4K est réduite. Jamais étirée ni rognée ; des bandes noires seulement là où la forme l'exige. La vidéo en direct et les enregistrements sont alors toujours en 1920×1080. Désactivé, l'image garde sa taille et son format et le réglage Format d'image s'applique. Redémarre une capture ou un flux RTSP-MJPEG en cours.",
-    "fps60": "Sortie 60 FPS",
-    "fps60Hint": "Rend la sortie 1920×1080 constante à 60 images par seconde : les images d'une caméra 25 ou 30 fps sont répétées jusqu'à 60 (cela régularise la cadence, sans ajouter de détail entre les images). Nécessite le canevas 1920×1080. S'applique aux flux Native et RTSP-MJPEG et à leurs enregistrements ; un flux Caméra (navigateur) est affiché à la cadence de la caméra.",
     "zoom": "Zoom",
     "zoomHint": "Faites glisser l'image pour la déplacer, ou balayez latéralement / Maj + molette. Sur la vidéo flottante ou plein écran, la molette change le zoom. Dans la fenêtre flottante, faites glisser la barre en haut pour déplacer la fenêtre. C'est un zoom numérique : il agrandit ce que la capture contient, sans ajouter de détails.",
     "zoomCycle": "Zoom {n}× — cliquer pour changer",

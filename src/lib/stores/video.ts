@@ -127,11 +127,6 @@ export interface VideoState {
    *  the picture the same way. While on, the display shape is always 16:9 (the canvas) and the Display
    *  ratio setting does not apply. Persisted; on by default. */
   canvas1080: boolean;
-  /** With the canvas: also output a constant 60 fps (`VIDEO_OUT_FPS`) — a slower source has frames
-   *  repeated, it can't invent detail between them. Applies to the backend-encoded feeds (native /
-   *  RTSP-MJPEG, live + recordings); a camera / WebRTC feed is shown as the camera delivers it.
-   *  Persisted; on by default. */
-  fps60: boolean;
   /** Digital zoom of the picture, one of `VIDEO_ZOOM_LEVELS`. One value for every video surface (panel
    *  preview, floating window, full-screen view). Runtime-only: resets when video stops. */
   zoom: number;
@@ -195,7 +190,6 @@ interface VideoPrefs {
   disableHwAccel: boolean;
   displayRatio: DisplayRatio;
   canvas1080: boolean;
-  fps60: boolean;
   mirror: boolean;
   floating: boolean;
   floatSnapped: boolean;
@@ -222,7 +216,6 @@ const PREF_DEFAULTS: VideoPrefs = {
   disableHwAccel: false,
   displayRatio: 'auto',
   canvas1080: true,
-  fps60: true,
   mirror: false,
   floating: false,
   floatSnapped: true,
@@ -261,7 +254,6 @@ function loadPrefs(): VideoPrefs {
           ? (p.displayRatio as DisplayRatio)
           : 'auto',
         canvas1080: p.canvas1080 ?? true,
-        fps60: p.fps60 ?? true,
       };
     }
   } catch {
@@ -294,7 +286,6 @@ function savePrefs(): void {
         disableHwAccel: s.disableHwAccel,
         displayRatio: s.displayRatio,
         canvas1080: s.canvas1080,
-        fps60: s.fps60,
         mirror: s.mirror,
         floating: s.floating,
         floatSnapped: s.floatSnapped,
@@ -339,7 +330,6 @@ const INITIAL: VideoState = {
   disableHwAccel: boot.disableHwAccel,
   displayRatio: boot.displayRatio,
   canvas1080: boot.canvas1080,
-  fps60: boot.fps60,
   zoom: 1,
   panX: 0,
   panY: 0,
@@ -519,13 +509,6 @@ export function isWebrtcAvailable(): boolean {
   return typeof RTCPeerConnection !== 'undefined';
 }
 
-/** The constant output frame rate the 1080p canvas asks the backend for (slower sources repeat frames),
- *  or null for "as the source delivers it". Only meaningful with the canvas on. */
-export const VIDEO_OUT_FPS = 60;
-function outputFps(s: Pick<VideoState, 'canvas1080' | 'fps60'>): number | null {
-  return s.canvas1080 && s.fps60 ? VIDEO_OUT_FPS : null;
-}
-
 /** Start a native device via the built-in ffmpeg→MJPEG server (no getUserMedia, no go2rtc). The chosen
  *  codec is the capture input format: MJPEG is stream-copied (`-c copy`, the camera's HW JPEG encoder
  *  does the work), raw/H.264 is transcoded to MJPEG for the `<img>` sink. */
@@ -534,7 +517,6 @@ async function startNativeMjpeg(
   id: string,
   record: boolean,
   canvas: boolean,
-  outFps: number | null,
 ): Promise<{ url: string; transcode: string; recordingPath: string | null }> {
   return await invoke<{ url: string; transcode: string; recordingPath: string | null }>('video_native_mjpeg_start', {
     id,
@@ -544,7 +526,6 @@ async function startNativeMjpeg(
     fps: sel.fps,
     record,
     canvas,
-    outFps,
   });
 }
 
@@ -784,7 +765,6 @@ async function startMjpegPath(url: string, requireCopy = false): Promise<boolean
       // the automatic one after repeated failures.
       allowHwDecode: !get(videoState).disableHwAccel && rtspMjpegFailures < 2,
       canvas: get(videoState).canvas1080,
-      outFps: outputFps(get(videoState)),
     });
     // Stopped while we were away? The awaits above straddle a Stop easily — the backend's hardware
     // probe alone can take seconds on a first start. Publishing 'live' + a URL regardless put the
@@ -1275,7 +1255,7 @@ export async function startNative(): Promise<void> {
   savePrefs();
   const sel = st.nativeSel;
   try {
-    const { url, transcode, recordingPath } = await startNativeMjpeg(sel, id, st.recording, st.canvas1080, outputFps(st));
+    const { url, transcode, recordingPath } = await startNativeMjpeg(sel, id, st.recording, st.canvas1080);
     // Same straddled-Stop hazard as the RTSP path: the backend holds this call until the capture
     // produces its first bytes, so a Stop in between runs its `stopNativeMjpeg` before this server
     // even exists. Undo it rather than announcing a feed nobody asked for any more.
@@ -1567,15 +1547,6 @@ export function setVideoMirror(mirror: boolean): void {
 export function setDisplayRatio(displayRatio: DisplayRatio): void {
   patch({ displayRatio });
   savePrefs();
-}
-
-/** Turn the 60 fps output on/off (needs the canvas). Restarts a running backend feed, like the canvas. */
-export async function setFps60(fps60: boolean): Promise<void> {
-  const st = get(videoState);
-  if (st.fps60 === fps60) return;
-  patch({ fps60 });
-  savePrefs();
-  if (st.enabled && st.canvas1080 && (st.kind === 'native' || (st.kind === 'rtsp' && st.mjpegUrl))) await startActive();
 }
 
 /** Turn the fixed 1920×1080 canvas on/off. The backend pads the frames it encodes, so a running

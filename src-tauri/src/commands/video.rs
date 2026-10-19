@@ -310,8 +310,6 @@ pub fn video_probe_device(id: String) -> Vec<native::CaptureMode> {
 ///
 /// `canvas`: output 1920×1080 — every frame, live and recorded, is scaled to fit the frame with its
 /// aspect ratio kept and centred on black (`video::canvas`); omitted = on. Never stretched or cropped.
-/// `out_fps`: with the canvas, a constant output frame rate (e.g. 60) — slower sources have frames
-/// repeated, faster ones dropped.
 ///
 /// `record`: also write an enhanced (denoised/sharpened/colour-corrected — see
 /// `mjpeg_server::RECORD_ENHANCE_FILTERS`) H.264/Matroska copy to `video::recording::recordings_dir()`.
@@ -327,7 +325,6 @@ pub fn video_native_mjpeg_start(
     fps: u32,
     record: bool,
     canvas: Option<bool>,
-    out_fps: Option<u32>,
     mjpeg: State<'_, crate::video::MjpegServer>,
 ) -> Result<serde_json::Value, String> {
     let spec = native::CaptureSpec { id, codec, width, height, fps };
@@ -339,8 +336,7 @@ pub fn video_native_mjpeg_start(
     // even an MJPEG camera is decoded, placed on the canvas and re-encoded (software).
     let transcode = if canvas || native::needs_transcode(&spec.codec) { "software" } else { "copy" };
     let record_path = record.then(crate::video::recording::new_recording_path).transpose()?;
-    let out_fps = out_fps.filter(|_| canvas);
-    let port = mjpeg.start(ended_hook(&app), &MjpegSource::Device(&spec), record_path.clone(), canvas, out_fps)?;
+    let port = mjpeg.start(ended_hook(&app), &MjpegSource::Device(&spec), record_path.clone(), canvas)?;
     Ok(serde_json::json!({
         "url": format!("http://127.0.0.1:{port}/"),
         "transcode": transcode,
@@ -423,12 +419,10 @@ pub fn video_rtsp_mjpeg_start(
     require_copy: bool,
     allow_hw_decode: Option<bool>,
     canvas: Option<bool>,
-    out_fps: Option<u32>,
     mjpeg: State<'_, crate::video::MjpegServer>,
 ) -> Result<serde_json::Value, String> {
     // Fixed 1920×1080 output canvas (`video::canvas`): on unless the caller says otherwise.
     let canvas = canvas.unwrap_or(true);
-    let out_fps = out_fps.filter(|_| canvas);
     let reply = |port: u16, t: RtspTranscode| {
         serde_json::json!({ "url": format!("http://127.0.0.1:{port}/"), "transcode": t.label() })
     };
@@ -444,7 +438,7 @@ pub fn video_rtsp_mjpeg_start(
     // down and the feed restarted as a software decode → canvas → encode (an MJPEG source can't keep
     // its packets once the picture has to be placed on a canvas).
     let copy = MjpegSource::Rtsp { url: &url, transcode: RtspTranscode::Copy };
-    match mjpeg.start(ended_hook(&app), &copy, None, false, None) {
+    match mjpeg.start(ended_hook(&app), &copy, None, false) {
         Ok(port) if !canvas => {
             log::info!("[video] RTSP source already carries MJPEG — stream-copied, no transcode");
             return Ok(reply(port, RtspTranscode::Copy));
@@ -456,7 +450,6 @@ pub fn video_rtsp_mjpeg_start(
                 &MjpegSource::Rtsp { url: &url, transcode: RtspTranscode::Software },
                 None,
                 true,
-                out_fps,
             )?;
             return Ok(reply(port, RtspTranscode::Software));
         }
@@ -479,7 +472,7 @@ pub fn video_rtsp_mjpeg_start(
     // A GPU-resident VAAPI chain can't feed the canvas's software filter, so it runs in software
     // then; the label reports what actually runs.
     let transcode = crate::video::mjpeg_server::effective_transcode(transcode, canvas);
-    let port = mjpeg.start(ended_hook(&app), &MjpegSource::Rtsp { url: &url, transcode }, None, canvas, out_fps)?;
+    let port = mjpeg.start(ended_hook(&app), &MjpegSource::Rtsp { url: &url, transcode }, None, canvas)?;
     log::info!("[video] RTSP MJPEG transcode running ({})", transcode.label());
     Ok(reply(port, transcode))
 }

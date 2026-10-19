@@ -700,8 +700,6 @@
     "displayRatioHint": "Auto shows analog goggle video (480p/576p) at its true 4:3 and everything else at its own shape. Pick 4:3 or 16:9 to force one. Stretch to fill covers the whole full-screen view with no black bars — handy on a TV.",
     "canvas1080": "Fixed 1920×1080 canvas",
     "canvas1080Hint": "Outputs 1920×1080 video: every picture is scaled to fit the 1920×1080 frame with its shape kept and centred on black — a 720×480 camera becomes 1620×1080, a 1280×720 one fills the frame, a 4K one is scaled down. Never stretched or cropped; black bars appear only where the shape needs them. Live video and recordings are then always 1920×1080. Turn it off to show the picture at its own size and shape; the Display ratio setting applies then. Restarts a running capture or RTSP-MJPEG feed.",
-    "fps60": "Output 60 FPS",
-    "fps60Hint": "Makes the 1920×1080 output a constant 60 frames per second: a 25 or 30 fps camera has its frames repeated up to 60 (it smooths the pacing; it can’t add detail between frames). Needs the 1920×1080 canvas. Applies to Native and RTSP-MJPEG feeds and their recordings; a Camera (browser) feed is shown at the rate the camera delivers.",
     "zoom": "Zoom",
     "zoomHint": "Drag the picture to pan, or swipe sideways / Shift + wheel. Over the floating or full-screen video the mouse wheel changes the zoom. In the floating window, drag the bar along its top edge to move the window. This is digital zoom — it enlarges what the capture has, it can't add detail.",
     "zoomCycle": "Zoom {n}× — click to change",
