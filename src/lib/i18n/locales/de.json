@@ -700,6 +700,8 @@
     "displayRatioHint": "Auto zeigt analoge Brillen-Videos (480p/576p) im echten 4:3 und alles andere in seinem eigenen Format. 4:3 oder 16:9 erzwingt ein Format. „Auf Vollbild strecken“ füllt die ganze Vollbildansicht ohne schwarze Ränder — praktisch am Fernseher.",
     "canvas1080": "Feste 1920×1080-Leinwand",
     "canvas1080Hint": "Gibt 1920×1080-Video aus: Jedes Bild wird formtreu auf das 1920×1080-Bild skaliert und mittig auf Schwarz gesetzt — eine 720×480-Kamera wird zu 1620×1080, eine 1280×720-Kamera füllt das Bild, 4K wird verkleinert. Nie gestreckt oder beschnitten; schwarze Balken nur, wo es die Form erfordert. Live-Video und Aufnahmen sind dann immer 1920×1080. Ausgeschaltet wird das Bild in Originalgröße und -format gezeigt; dann gilt die Einstellung „Bildformat“. Startet einen laufenden Capture- oder RTSP-MJPEG-Feed neu.",
+    "fps60": "60 FPS ausgeben",
+    "fps60Hint": "Macht die 1920×1080-Ausgabe zu konstant 60 Bildern pro Sekunde: Bilder einer 25- oder 30-fps-Kamera werden bis 60 wiederholt (das glättet den Takt, ergänzt aber keine Details zwischen den Bildern). Benötigt die 1920×1080-Leinwand. Gilt für Native- und RTSP-MJPEG-Feeds und deren Aufnahmen; ein Kamera-Feed (Browser) wird mit der Rate der Kamera gezeigt.",
     "zoom": "Zoom",
     "zoomHint": "Bild ziehen zum Verschieben, oder seitlich wischen / Umschalt + Mausrad. Über dem schwebenden oder Vollbild-Video ändert das Mausrad den Zoom. Im schwebenden Fenster verschiebt man das Fenster über die Leiste am oberen Rand. Das ist digitaler Zoom: er vergrößert, was die Aufnahme enthält, und fügt keine Details hinzu.",
     "zoomCycle": "Zoom {n}× — zum Ändern klicken",

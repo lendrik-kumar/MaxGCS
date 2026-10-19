@@ -63,9 +63,29 @@ pub fn filter() -> String {
     )
 }
 
+/// `filter()` plus, when `fps` is `Some(n)`, a trailing `fps=n` that makes the output a constant `n`
+/// frames per second — a slower source has frames repeated (it can't invent detail between them), a
+/// faster one has frames dropped. Last in the chain on purpose: the repeats are then cheap references to
+/// the already scaled frame instead of being scaled again, and every leg (live MJPEG + recording) keeps
+/// the same cadence.
+pub fn filter_fps(fps: Option<u32>) -> String {
+    match fps {
+        Some(n) if n > 0 => format!("{},fps={n}", filter()),
+        _ => filter(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn fps_is_appended_last_and_only_when_asked() {
+        assert_eq!(filter_fps(None), filter());
+        assert_eq!(filter_fps(Some(0)), filter());
+        let f = filter_fps(Some(60));
+        assert!(f.starts_with(&filter()) && f.ends_with(",fps=60"), "{f}");
+    }
 
     #[test]
     fn small_pictures_are_enlarged_to_fill_the_canvas_on_their_limiting_axis() {

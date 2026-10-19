@@ -67,6 +67,10 @@ Native additionally reaches devices that only the capture engine can see.
   picture must be decoded, scaled and re-encoded, a Native MJPEG camera is no longer passed straight
   through (higher CPU use — turn the canvas off on a small board). Scaling enlarges the existing pixels;
   it can't add detail. While it is on, the *Display ratio* setting does not apply.
+- **Output 60 FPS** (on by default, needs the canvas) — the 1920×1080 output is a constant 60 frames per
+  second. A 25 or 30 fps camera has its frames repeated up to 60: the pacing is steady, but nothing is
+  added between frames. Applies to Native and RTSP-MJPEG feeds and their recordings; a Camera (browser)
+  feed is shown at the rate the camera delivers it (the info line shows the measured rate).
 - **Disable hardware acceleration** — force the CPU for any stream conversion. Only needed if the
   picture is broken or unstable with hardware acceleration; the setting is remembered.
 

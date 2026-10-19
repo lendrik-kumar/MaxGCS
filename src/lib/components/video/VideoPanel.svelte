@@ -26,6 +26,7 @@
     setVideoMirror,
     setDisplayRatio,
     setCanvas1080,
+    setFps60,
     videoDisplayAspect,
     setVideoZoom,
     videoZoomTransform,
@@ -746,6 +747,17 @@
       <span class="label">{$t('video.canvas1080')}</span>
     </div>
     <p class="hint">{$t('video.canvas1080Hint')}</p>
+
+    <div class="field-row">
+      <Toggle
+        checked={$videoState.fps60}
+        disabled={!$videoState.canvas1080}
+        onchange={(c) => void setFps60(c)}
+        id="vp-fps60"
+      />
+      <span class="label">{$t('video.fps60')}</span>
+    </div>
+    <p class="hint">{$t('video.fps60Hint')}</p>
 
     <label class="field">
       <span class="label">{$t('video.displayRatio')}</span>

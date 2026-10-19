@@ -174,12 +174,16 @@ impl MjpegServer {
     /// (`super::canvas`). It needs decoded frames, so it replaces any stream-copy with a decode →
     /// filter → re-encode, and (RTSP) steers a GPU-resident VAAPI chain onto the software one — see
     /// `effective_transcode`.
+    ///
+    /// `out_fps`: with the canvas on, also make the output a constant N fps (`canvas::filter_fps`) —
+    /// frames of a slower source are repeated, of a faster one dropped. Ignored without the canvas.
     pub fn start(
         &self,
         on_ended: EndedHook,
         source: &MjpegSource,
         record_path: Option<PathBuf>,
         canvas: bool,
+        out_fps: Option<u32>,
     ) -> Result<u16, String> {
         self.stop();
 
@@ -210,6 +214,7 @@ impl MjpegServer {
                     super::native::needs_transcode(&spec.codec),
                     record_path.as_deref().map(|p| p.to_string_lossy().into_owned()),
                     canvas,
+                    out_fps,
                 );
                 args.extend(live);
                 record_tail = tail;
@@ -253,7 +258,7 @@ impl MjpegServer {
                 ]);
                 // The canvas filter sits between decode and encode, on the output side.
                 if canvas && !matches!(transcode, RtspTranscode::Copy) {
-                    args.extend(["-vf".into(), super::canvas::filter()]);
+                    args.extend(["-vf".into(), super::canvas::filter_fps(out_fps)]);
                 }
                 match transcode {
                     RtspTranscode::Copy => args.extend(["-c".into(), "copy".into()]),
@@ -391,11 +396,13 @@ pub fn effective_transcode(transcode: RtspTranscode, canvas: bool) -> RtspTransc
 ///
 /// With `canvas` both legs go through `canvas::filter()`, after the recording's enhancement chain
 /// (denoise/sharpen at the source size is cheaper than at 1080p), so the recorded `.mkv` is 1920×1080
-/// exactly like the live feed. Either way a canvas forces decoded frames — no `-c copy`.
+/// exactly like the live feed. Either way a canvas forces decoded frames — no `-c copy`. `out_fps`
+/// (canvas only) pins both legs to a constant frame rate.
 fn device_output_args(
     needs_transcode: bool,
     rec_path: Option<String>,
     canvas: bool,
+    out_fps: Option<u32>,
 ) -> (Vec<String>, Option<Vec<String>>) {
     let mjpeg_enc: [String; 4] = ["-c:v".into(), "mjpeg".into(), "-q:v".into(), "5".into()];
     if let Some(rec_path) = rec_path {
@@ -403,7 +410,7 @@ fn device_output_args(
         // input is already MJPEG, so recording always forces the live leg through the transcode path
         // too — no more stream-copy while recording is on.
         let (graph, live_label) = if canvas {
-            let c = super::canvas::filter();
+            let c = super::canvas::filter_fps(out_fps);
             (
                 format!(
                     "[0:v]split=2[live][rec];[live]{c}[livec];[rec]{RECORD_ENHANCE_FILTERS},{c}[recf]"
@@ -440,7 +447,7 @@ fn device_output_args(
         (live, Some(tail))
     } else if canvas {
         // Decode → canvas → MJPEG encode, even for a camera that already emits MJPEG.
-        let mut live: Vec<String> = vec!["-vf".into(), super::canvas::filter()];
+        let mut live: Vec<String> = vec!["-vf".into(), super::canvas::filter_fps(out_fps)];
         live.extend(mjpeg_enc);
         (live, None)
     } else if needs_transcode {
@@ -1001,12 +1008,12 @@ mod tests {
 
     #[test]
     fn device_without_canvas_is_unchanged() {
-        let (live, tail) = device_output_args(false, None, false);
+        let (live, tail) = device_output_args(false, None, false, None);
         assert_eq!(joined(&live), "-c copy");
         assert!(tail.is_none());
-        let (live, _) = device_output_args(true, None, false);
+        let (live, _) = device_output_args(true, None, false, None);
         assert_eq!(joined(&live), "-c:v mjpeg -q:v 5");
-        let (live, tail) = device_output_args(false, Some("out.mkv".into()), false);
+        let (live, tail) = device_output_args(false, Some("out.mkv".into()), false, None);
         assert!(joined(&live).contains("[0:v]split=2[live][rec];[rec]hqdn3d"));
         assert!(!joined(&live).contains("pad="), "no canvas requested: {live:?}");
         assert_eq!(tail.unwrap().last().map(String::as_str), Some("out.mkv"));
@@ -1015,7 +1022,7 @@ mod tests {
     #[test]
     fn device_canvas_replaces_stream_copy_with_decode_filter_encode() {
         // A camera that already sends MJPEG used to be `-c copy`; the canvas needs the pixels.
-        let (live, tail) = device_output_args(false, None, true);
+        let (live, tail) = device_output_args(false, None, true, None);
         let j = joined(&live);
         assert!(j.starts_with("-vf scale=") && j.contains("pad=1920:1080"), "{j}");
         assert!(j.ends_with("-c:v mjpeg -q:v 5"), "{j}");
@@ -1025,7 +1032,7 @@ mod tests {
 
     #[test]
     fn device_canvas_applies_to_both_the_live_and_the_recorded_leg() {
-        let (live, tail) = device_output_args(false, Some("rec.mkv".into()), true);
+        let (live, tail) = device_output_args(false, Some("rec.mkv".into()), true, None);
         let graph = live.iter().find(|a| a.starts_with("[0:v]split")).expect("filter_complex graph");
         // Live leg: canvas, then mapped. Recorded leg: enhance first, THEN canvas, then mapped.
         assert!(graph.contains("[live]scale="), "{graph}");
@@ -1038,6 +1045,19 @@ mod tests {
         let tail = tail.unwrap();
         assert_eq!(&tail[..2], ["-map", "[recf]"]);
         assert!(joined(&tail).contains("-pix_fmt yuv420p -f matroska rec.mkv"));
+    }
+
+    #[test]
+    fn out_fps_pins_the_live_and_the_recorded_leg() {
+        let (live, _) = device_output_args(false, None, true, Some(60));
+        assert!(joined(&live).contains(",fps=60 -c:v mjpeg"), "{live:?}");
+        let (live, tail) = device_output_args(false, Some("rec.mkv".into()), true, Some(60));
+        let graph = live.iter().find(|a| a.starts_with("[0:v]split")).unwrap();
+        assert!(graph.contains("fps=60[livec]") && graph.contains("fps=60[recf]"), "{graph}");
+        assert!(tail.is_some());
+        // No canvas → no fps filter, whatever was asked (the fps option belongs to the canvas output).
+        let (live, _) = device_output_args(false, None, false, Some(60));
+        assert_eq!(joined(&live), "-c copy");
     }
 
     #[test]
@@ -1075,6 +1095,7 @@ mod tests {
             false,
             Some(rec_path.to_string_lossy().into_owned()),
             true,
+            Some(60),
         );
         let mut args: Vec<String> = vec![
             "-hide_banner".into(), "-loglevel".into(), "error".into(), "-y".into(),
@@ -1088,18 +1109,25 @@ mod tests {
         let out = Command::new(&ff).args(&args).output().expect("run ffmpeg");
         assert!(out.status.success(), "ffmpeg failed: {}", String::from_utf8_lossy(&out.stderr));
 
-        // Both outputs: 1920x1080, with frames.
+        // Both outputs: 1920x1080, square pixels, and 60 fps (the 25 fps source is repeated up to it:
+        // 2 s of input → ~120 frames, not the ~50 the source has).
         for (name, path, fmt) in [("live", &live_path, "mpjpeg"), ("recorded", &rec_path, "matroska")] {
             let mut cmd = Command::new(&probe);
-            cmd.args(["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height,sample_aspect_ratio", "-of", "csv=p=0"]);
+            cmd.args([
+                "-v", "error", "-count_frames", "-select_streams", "v:0", "-show_entries",
+                "stream=width,height,sample_aspect_ratio,nb_read_frames", "-of", "csv=p=0",
+            ]);
             if fmt == "mpjpeg" {
                 cmd.args(["-f", "mpjpeg"]);
             }
             let r = cmd.arg(path).output().expect("run ffprobe");
             let line = String::from_utf8_lossy(&r.stdout).trim().to_string();
-            assert!(line.starts_with("1920,1080"), "{name} leg is not 1920x1080: {line:?} {}", String::from_utf8_lossy(&r.stderr));
+            let f: Vec<&str> = line.split(',').collect();
+            assert!(f.len() >= 4 && f[0] == "1920" && f[1] == "1080", "{name} leg is not 1920x1080: {line:?} {}", String::from_utf8_lossy(&r.stderr));
             // Square pixels: the placed picture must not be stretched again by a player.
-            assert!(line.ends_with(",1:1") || line.ends_with(",N/A") || line.ends_with(",0:1"), "{name} leg SAR: {line:?}");
+            assert!(["1:1", "N/A", "0:1"].contains(&f[2]), "{name} leg SAR: {line:?}");
+            let frames: u32 = f[3].parse().unwrap_or(0);
+            assert!((110..=125).contains(&frames), "{name} leg is not 60 fps: {frames} frames in 2 s ({line:?})");
         }
         let _ = std::fs::remove_dir_all(&dir);
     }
