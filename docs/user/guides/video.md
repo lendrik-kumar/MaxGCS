@@ -59,12 +59,14 @@ Native additionally reaches devices that only the capture engine can see.
   for the chosen resolution and format.
 - **Mirror** — flip the image horizontally (handy for front-facing cameras). Applies to every place the
   feed is shown.
-- **Fixed 1920×1080 canvas** (on by default) — every picture is shown at its own size in the centre of a
-  black 1920×1080 canvas: never stretched, cropped or enlarged (a source bigger than 1080p is scaled down
-  to fit). Native and RTSP-MJPEG feeds are padded by the backend, so the live video **and the recordings**
-  are 1920×1080; Camera and WebRTC feeds are placed the same way on screen. Because the canvas must be
-  decoded and re-encoded, a Native MJPEG camera is no longer passed straight through (higher CPU use —
-  turn the canvas off on a small board). While it is on, the *Display ratio* setting does not apply.
+- **Fixed 1920×1080 canvas** (on by default) — outputs 1080p: every picture is scaled to fit a 1920×1080
+  frame with its shape kept and centred on black. A 720×480 camera becomes 1620×1080, a 1280×720 one
+  fills the frame, a 4K one is scaled down; never stretched or cropped, with black bars only where the
+  shape needs them. Native and RTSP-MJPEG feeds are scaled by the backend, so the live video **and the
+  recordings** are 1920×1080; Camera and WebRTC feeds are scaled the same way on screen. Because the
+  picture must be decoded, scaled and re-encoded, a Native MJPEG camera is no longer passed straight
+  through (higher CPU use — turn the canvas off on a small board). Scaling enlarges the existing pixels;
+  it can't add detail. While it is on, the *Display ratio* setting does not apply.
 - **Disable hardware acceleration** — force the CPU for any stream conversion. Only needed if the
   picture is broken or unstable with hardware acceleration; the setting is remembered.
 

@@ -121,11 +121,11 @@ export interface VideoState {
   mirror: boolean;
   /** Display ratio mode — see `DisplayRatio` / `resolveDisplayAspect`. Persisted. */
   displayRatio: DisplayRatio;
-  /** Fixed 1920×1080 canvas: every picture sits at the centre of a black 1920×1080 canvas at its own
-   *  size (never stretched, cropped or upscaled). The backend pads the frames it encodes (live MJPEG +
-   *  recordings); the WebView-decoded surfaces (camera / WebRTC) place the picture the same way. While
-   *  on, the display shape is always 16:9 (the canvas) and the Display ratio setting does not apply.
-   *  Persisted; on by default. */
+  /** Fixed 1920×1080 output: every picture is scaled (up or down) to fit a 1920×1080 frame with its
+   *  aspect ratio kept and centred on black — never stretched or cropped. The backend does it to the
+   *  frames it encodes (live MJPEG + recordings); the WebView-decoded surfaces (camera / WebRTC) place
+   *  the picture the same way. While on, the display shape is always 16:9 (the canvas) and the Display
+   *  ratio setting does not apply. Persisted; on by default. */
   canvas1080: boolean;
   /** Digital zoom of the picture, one of `VIDEO_ZOOM_LEVELS`. One value for every video surface (panel
    *  preview, floating window, full-screen view). Runtime-only: resets when video stops. */

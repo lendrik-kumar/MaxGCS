@@ -308,9 +308,8 @@ pub fn video_probe_device(id: String) -> Vec<native::CaptureMode> {
 /// Only returns `Ok` once the capture actually produced its first bytes — a device that rejects the
 /// requested mode used to leave the UI showing "live" over a black frame (see `MjpegServer::start`).
 ///
-/// `canvas`: place every frame — live and recorded — at the centre of a black 1920×1080 canvas
-/// (`video::canvas`); omitted = on. The frame keeps its own size and aspect ratio (never stretched,
-/// cropped or upscaled; a source larger than the canvas is scaled down to fit).
+/// `canvas`: output 1920×1080 — every frame, live and recorded, is scaled to fit the frame with its
+/// aspect ratio kept and centred on black (`video::canvas`); omitted = on. Never stretched or cropped.
 ///
 /// `record`: also write an enhanced (denoised/sharpened/colour-corrected — see
 /// `mjpeg_server::RECORD_ENHANCE_FILTERS`) H.264/Matroska copy to `video::recording::recordings_dir()`.

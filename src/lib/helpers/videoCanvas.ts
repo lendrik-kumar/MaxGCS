@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Marc Hoffmann (b14ckyy)
 
-// Fixed 1920×1080 video canvas — the geometry. Every picture is shown at the centre of a black
-// 1920×1080 canvas at its own size: never stretched, cropped or upscaled; only a picture larger than
-// the canvas is scaled down (aspect preserved) until it fits. The backend does this to the frames it
-// encodes (live MJPEG + recordings, `src-tauri/src/video/canvas.rs` — keep `canvasPlacement` in step
-// with its `placement`); this module does the same placement for the surfaces whose picture is decoded
-// by the WebView itself (camera / WebRTC), where there is no encode step to pad.
+// Fixed 1920×1080 video canvas — the geometry. Every picture is scaled (up or down) to the largest size
+// that fits a 1920×1080 canvas with its aspect ratio kept, and centred on it: a 720×480 camera becomes
+// 1620×1080, a 1280×720 one fills the whole canvas, a 4K one is shrunk to fit. Never stretched or
+// cropped; the black bars appear only where the picture's shape leaves room. The backend does this to
+// the frames it encodes (live MJPEG + recordings, `src-tauri/src/video/canvas.rs` — keep
+// `canvasPlacement` in step with its `placement`); this module does the same placement for the
+// surfaces whose picture is decoded by the WebView itself (camera / WebRTC), where there is no encode
+// step to scale and pad.
 //
 // Pure (no imports) so it can be tested on its own — see `videoCanvas.test.mjs`.
 
@@ -24,17 +26,16 @@ export interface CanvasRect {
 /** Where a `srcW`×`srcH` picture lands on the canvas, in canvas pixels. Mirrors the backend. */
 export function canvasPlacement(srcW: number, srcH: number): CanvasRect {
   if (!(srcW > 0) || !(srcH > 0)) return { w: 0, h: 0, x: 0, y: 0 };
-  let w = srcW;
-  let h = srcH;
-  if (srcW > CANVAS_W || srcH > CANVAS_H) {
-    // Scale down by the one factor that makes it fit (the axis that overshoots most binds).
-    if (srcW * CANVAS_H >= srcH * CANVAS_W) {
-      w = CANVAS_W;
-      h = Math.max(1, Math.floor((CANVAS_W * srcH) / srcW));
-    } else {
-      h = CANVAS_H;
-      w = Math.max(1, Math.floor((CANVAS_H * srcW) / srcH));
-    }
+  let w: number;
+  let h: number;
+  // The axis with the smaller `canvas / source` ratio binds and takes the full canvas length; the
+  // other is derived from the aspect ratio, rounded to the nearest pixel (as ffmpeg's `scale` does).
+  if (CANVAS_W * srcH <= CANVAS_H * srcW) {
+    w = CANVAS_W;
+    h = Math.min(CANVAS_H, Math.max(1, Math.round((CANVAS_W * srcH) / srcW)));
+  } else {
+    h = CANVAS_H;
+    w = Math.min(CANVAS_W, Math.max(1, Math.round((CANVAS_H * srcW) / srcH)));
   }
   // Centred; offsets rounded down to even pixels like ffmpeg's `pad` (chroma alignment).
   return { w, h, x: Math.floor((CANVAS_W - w) / 2) & ~1, y: Math.floor((CANVAS_H - h) / 2) & ~1 };

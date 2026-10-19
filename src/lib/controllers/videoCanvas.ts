@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Marc Hoffmann (b14ckyy)
 
-// Svelte action for a `<video>` the WebView decodes itself (camera / WebRTC): places the picture at the
-// centre of the fixed 1920×1080 canvas instead of stretching it over its surface. The surface shows the
-// whole 16:9 canvas; the picture keeps its own pixel size, scaled only by the canvas's own fit into the
-// surface — never stretched, cropped or upscaled beyond that.
+// Svelte action for a `<video>` the WebView decodes itself (camera / WebRTC): scales the picture to
+// fit the fixed 1920×1080 canvas and centres it, instead of stretching it over its surface. The surface
+// shows the whole 16:9 canvas; the picture is enlarged (or shrunk) to fill it on its limiting axis with
+// its aspect ratio kept — never stretched or cropped.
 //
 // It only sets inline size/position on the element and removes them again when the canvas is off or the
 // size is unknown, so the surface's own CSS (`width/height: 100%`) takes back over. Costs nothing per
