@@ -207,9 +207,78 @@ def run_case(fc, pilot):
     return all(checks)
 
 
+def unit():
+    """Dwell lock, search-before-resume and colour detector, on the fake FC (no processes, ~8 s)."""
+    print("\n=========== UNIT - dwell lock / search / colour detector")
+    checks = []
+
+    def check(name, ok, detail=""):
+        checks.append(ok)
+        print(f"[{'PASS' if ok else 'FAIL'}] {name} {detail}")
+
+    def trk_for(*extra):
+        a = vt.parse_args(["--no-fc", "--headless", "--confirm-frames", "2", *extra])
+        fc = vt.NullLink()
+        return vt.VisualTrack(fc, a), fc
+
+    def feed(trk, det, secs, fps=20):
+        for _ in range(int(secs * fps)):
+            trk.update([det] if det else [], W, H)
+            time.sleep(1 / fps)
+
+    centred, edge = vt.Det(300, 200, 40, 100), vt.Det(560, 200, 40, 100)
+
+    trk, _ = trk_for("--lock-seconds", "1.0")
+    feed(trk, centred, 0.6)
+    check("dwell: not triggered before --lock-seconds", trk.state == vt.PATROL, f"({trk.state})")
+    feed(trk, centred, 0.8)
+    check("dwell: triggered once the target has dwelt long enough", trk.state != vt.PATROL, f"({trk.state})")
+
+    trk, _ = trk_for("--lock-seconds", "1.0")
+    feed(trk, edge, 2.0)
+    check("dwell: target outside the centre box never triggers", trk.state == vt.PATROL, f"({trk.state})")
+    feed(trk, centred, 0.7)
+    feed(trk, edge, 0.8)
+    feed(trk, centred, 0.7)
+    check("dwell: leaving the box restarts the clock", trk.state == vt.PATROL, f"({trk.state})")
+
+    trk, _ = trk_for()
+    feed(trk, edge, 0.4)
+    check("dwell off (default): triggers anywhere in the frame", trk.state != vt.PATROL, f"({trk.state})")
+
+    def lose_target(*extra):
+        trk, fc = trk_for("--lost-timeout", "1.5", *extra)
+        rates = []
+        fc.yaw_rate = rates.append
+        feed(trk, vt.Det(500, 200, 40, 100), 0.5)  # right of centre -> clockwise error
+        feed(trk, None, 1.0)
+        return trk, rates
+
+    trk, rates = lose_target("--search-rate", "20")
+    check("search: keeps turning toward the side it vanished on", trk.state == vt.LOCKED and rates[-1] == 20.0,
+          f"(last rate {rates[-1]:+.1f})")
+    trk, rates = lose_target()
+    check("search off (default): holds heading when the target drops out", rates[-1] == 0.0, f"(last rate {rates[-1]:+.1f})")
+
+    for colour, bgr in (("green", (0, 200, 0)), ("orange", (0, 140, 255)), ("red", (0, 0, 220)), ("blue", (220, 60, 0))):
+        img = np.full((H, W, 3), 40, np.uint8)
+        cv2.rectangle(img, (380, 120), (460, 260), bgr, -1)
+        found = vt.ColorDetector(colour).detect(img)
+        ok = len(found) == 1 and abs(found[0].cx - 420) < 12 and abs(found[0].cy - 190) < 12
+        check(f"colour detector finds a {colour} block", ok, f"({[(d.x, d.y, d.w, d.h) for d in found]})")
+    check("colour detector ignores other colours", vt.ColorDetector("green").detect(
+        cv2.rectangle(np.full((H, W, 3), 40, np.uint8), (380, 120), (460, 260), (0, 0, 220), -1)) == [])
+    return all(checks)
+
+
 if __name__ == "__main__":
-    which = sys.argv[1:] or ["inav", "ardupilot"]
+    which = sys.argv[1:] or ["unit", "inav", "ardupilot"]
     ok = True
+    if "unit" in which:
+        r = unit()
+        print("RESULT:", "ALL PASS" if r else "FAILURES")
+        ok = ok and r
+        which = [w for w in which if w != "unit"]
     for fc in which:
         for pilot in (False, True):
             r = run_case(fc, pilot)

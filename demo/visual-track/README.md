@@ -111,6 +111,9 @@ the GCS) against `mock_ardupilot.py`, SITL or MAVProxy. See the docstrings in `f
 | `--detector` | `hog` | `hog` full body · `face` best for a desk webcam · `yolo` optional (`pip install ultralytics`) |
 | `--hfov` | 70 | Camera horizontal FOV (°): turns pixels into degrees. Look yours up. |
 | `--kp` / `--max-rate` / `--deadband` | 1.0 / 45 / 2.5 | Tracking feel (deg/s per degree of error, rate cap, ± dead zone) |
+| `--detector color` + `--color` | `green` | Track a brightly coloured object instead of a person (`green` `orange` `yellow` `blue` `red`). Steadier than HOG/face for a camera demo |
+| `--lock-seconds` / `--lock-zone` | 0 (off) / 0.5 | Dwell lock: the target must stay inside the centre box (this fraction of the frame width) for N seconds before the mission is overridden. A brief detector dropout (0.5 s) does not restart the clock |
+| `--search-rate` | 0 (off) | deg/s to keep turning toward the side the target vanished on, until `--lost-timeout`, before resuming the mission. 0 = hold heading |
 | `--confirm-frames` / `--lost-timeout` / `--cooldown` | 5 / 3 s / 3 s | Trigger debounce, resume delay, re-trigger delay |
 | `--source` | 0 | Camera index, video file, or `rtsp://` URL (the drone's own stream) |
 | `--no-fc` | | Vision only, no FC link — to check the camera and detector |
@@ -118,9 +121,10 @@ the GCS) against `mock_ardupilot.py`, SITL or MAVProxy. See the docstrings in `f
 ## Check it works
 
 ```powershell
-.\.venv\Scripts\python selftest.py            # or: selftest.py inav
+.\.venv\Scripts\python selftest.py            # or: selftest.py unit | inav | ardupilot
 ```
 
+`unit` (about 8 s, no FC process) checks the dwell lock, search-before-resume and the colour detector.
 For INAV and ArduPilot, starts the simulated FC, plays a synthetic scene through the tracker, and watches
 the aircraft from an independent second link. Asserts: mission → override → mission, heading turns to
 centre the person, position is held, and a pilot veto makes the tracker let go and not fight back.
