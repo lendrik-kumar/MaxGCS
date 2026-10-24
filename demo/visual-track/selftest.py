@@ -66,6 +66,7 @@ class MavObserver:
 
     def run(self, log, stop):
         t0 = time.monotonic()
+        log["abs0"] = t0  # log times are seconds since this; lets a test line them up with other clocks
         while not stop.is_set():
             m = self.m.recv_match(blocking=True, timeout=0.3)
             if not m:
@@ -207,9 +208,87 @@ def run_case(fc, pilot):
     return all(checks)
 
 
+def run_mockcam():
+    """Closed loop on the simulated ArduPilot with the simulated camera (`--source mock`).
+
+    The target building sways +/-18 deg left and right. Nothing here tells the tracker where it is: the
+    picture is drawn from the heading the FC reports, the colour detector finds the building in it, and
+    the yaw commands must keep the drone pointed at the building as it moves. Checks that mission override,
+    lock, yaw and the camera view stay in step, then that the mission resumes when the target goes away."""
+    print("\n=========== ARDUPILOT - simulated camera: lock and track a swaying building")
+    from pymavlink import mavutil  # noqa: F401
+    gcs_port, trk_port, fc_port = 15710, 15711, 14710
+    log = {"modes": [], "yaw": [], "text": [], "pos": []}
+    stop = threading.Event()
+    obs = MavObserver(gcs_port)
+    mock = subprocess.Popen([sys.executable, os.path.join(HERE, "mock_ardupilot.py"), "--port", str(fc_port),
+                             "--size", "40", "--out", f"127.0.0.1:{gcs_port}", f"127.0.0.1:{trk_port}"],
+                            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    time.sleep(1.5)
+    threading.Thread(target=obs.run, args=(log, stop), daemon=True).start()
+    args = vt.parse_args(["--fc", "ardupilot", "--connect", f"udpin:0.0.0.0:{trk_port}", "--source", "mock",
+                          "--detector", "color", "--color", "orange", "--headless", "--lost-timeout", "2.5",
+                          "--kp", "1.5", "--mock-hold", "24", "--mock-hide", "999", "--duration", "75"])
+    try:
+        trk = vt.run(args)
+    finally:
+        time.sleep(0.6)
+        stop.set()
+        mock.terminate()
+        mock_out = mock.communicate(timeout=5)[0]
+
+    print("--- mock log ---\n" + mock_out.strip())
+    seq = [m for _, m in log["modes"]]
+    print("\nmodes seen by the independent observer:", " -> ".join(seq))
+    checks = []
+
+    def check(name, ok, detail=""):
+        checks.append(ok)
+        print(f"[{'PASS' if ok else 'FAIL'}] {name} {detail}")
+
+    on = next((t for t, m in log["modes"] if m == "OVERRIDE"), None)
+    off = next((t for t, m in log["modes"] if on is not None and t > on and m != "OVERRIDE"), None)
+    check("MISSION -> OVERRIDE -> MISSION", seq[:3] == ["MISSION", "OVERRIDE", "MISSION"] and seq.count("OVERRIDE") == 1,
+          f"({seq})")
+    if on is None or off is None:
+        check("override window found", False)
+        return False
+
+    cam, abs0 = trk.cam, log["abs0"]
+    win = [(t, y) for t, y in log["yaw"] if on + 6.0 <= t <= off - 0.5]  # skip the initial swing-round
+    errs = [abs((y - cam.target_bearing(abs0 + t) + 180) % 360 - 180) for t, y in win]
+    errs_sorted = sorted(errs)
+    med, p95 = errs_sorted[len(errs) // 2], errs_sorted[int(len(errs) * 0.95)]
+    print(f"locked for {off - on:.1f} s; heading-vs-target error: median {med:.1f} deg, 95th pct {p95:.1f} deg")
+    check("heading stays on the swaying target", med < 10 and p95 < 22, f"(median {med:.1f}, p95 {p95:.1f})")
+
+    yaws = [y for t, y in win]
+    swing = max(((y - yaws[0] + 180) % 360 - 180) for y in yaws) - min(((y - yaws[0] + 180) % 360 - 180) for y in yaws)
+    check("tracked it left AND right", swing > 20, f"(heading swung {swing:.0f} deg)")
+
+    first = [y for t, y in log["yaw"] if on <= t <= on + 0.3]
+    turned = abs((yaws[0] - first[0] + 180) % 360 - 180) if first else 0
+    check("turned toward the target from the mission heading", turned > 8, f"(turned {turned:.0f} deg after the override)")
+
+    pos = [(la, lo) for t, la, lo in log["pos"] if on + 2 <= t <= off]
+    drift = math.hypot((pos[-1][0] - pos[0][0]) * 111320, (pos[-1][1] - pos[0][1]) * 111320)
+    check("position held while overridden", drift < 6.0, f"(moved {drift:.1f} m)")
+    check("narration reached the GCS in order",
+          [i for i, t in enumerate(log["text"]) if "MISSION OVERRIDE" in t][:1] <
+          [i for i, t in enumerate(log["text"]) if "RESUMING" in t][:1] and
+          any("MISSION OVERRIDE" in t for t in log["text"]))
+    check("final state is PATROL", trk.state == vt.PATROL, f"(state {trk.state})")
+    return all(checks)
+
+
 if __name__ == "__main__":
-    which = sys.argv[1:] or ["inav", "ardupilot"]
+    which = sys.argv[1:] or ["inav", "ardupilot", "mockcam"]
     ok = True
+    if "mockcam" in which:
+        r = run_mockcam()
+        print("RESULT:", "ALL PASS" if r else "FAILURES")
+        ok = ok and r
+        which = [w for w in which if w != "mockcam"]
     for fc in which:
         for pilot in (False, True):
             r = run_case(fc, pilot)

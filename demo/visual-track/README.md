@@ -104,6 +104,38 @@ the modes toggle in MaxGCS. Only then fly it, with a safety pilot's hand on the 
 `--fc ardupilot` drives an ArduCopter instead (AUTO → GUIDED, velocity 0 + yaw rate, status text to
 the GCS) against `mock_ardupilot.py`, SITL or MAVProxy. See the docstrings in `fc_ardupilot.py`.
 
+## Building / target lock with the simulated drone camera (ArduPilot or INAV)
+
+No camera, no person: `--source mock` is a simulated drone camera. It draws a small world (horizon,
+distant buildings, posts) and one orange **target building** that sways **left and right** around a
+compass bearing. Every frame is drawn from the drone's **real heading** as the FC reports it, so when
+the tracker yaws the drone the whole view slides sideways. The loop is closed honestly:
+
+```
+ FC heading ─> mock camera picture ─> colour detector ─> state machine ─> yaw command ─> FC ─> heading
+```
+
+```powershell
+.\.venv\Scripts\python mock_ardupilot.py                    # simulated FC (square mission); MaxGCS: UDP 14550
+.\.venv\Scripts\python visual_track.py --fc ardupilot --connect udpin:0.0.0.0:14551 --source mock --detector color --color orange
+```
+
+What you see in the camera window and in MaxGCS, in step:
+1. **PATROL**: the drone flies the mission; the camera view turns with each leg. The building comes into view as the nose swings past its bearing.
+2. **Trigger**: building detected for 5 frames → "target detected - MISSION OVERRIDE", FC mode AUTO → GUIDED.
+3. **Lock**: orange bracket cue + `TARGET LOCKED`. The drone yaws toward the building *whatever the mission heading was*, and holds position.
+4. **Track**: the building sways left/right; the drone yaws left/right after it. The scenery slides the opposite way, the building stays near the crosshair.
+5. **Resume**: after `--mock-hold` seconds the building is hidden; 3 s later the mission resumes (GUIDED → AUTO). It returns after `--mock-hide` s and can trigger again.
+
+Tune it with `--mock-bearing`, `--mock-sway`, `--mock-period`, `--mock-hold`, `--mock-hide`. `--duration N` stops after N seconds.
+With the INAV mock use `--fc inav` and its default connect string; the camera only needs a heading.
+
+**Real buildings:** the colour detector only finds painted/marked targets. For real buildings train a YOLO
+model and run `--detector yolo --weights building.pt --classes 0` (not exercised here).
+
+`selftest.py mockcam` runs this closed loop against the simulated ArduPilot and asserts the heading stays
+on the swaying target (median error under 10°), swings both ways, held position, and the mission resumed.
+
 ## Options
 
 | Flag | Default | |
@@ -118,7 +150,7 @@ the GCS) against `mock_ardupilot.py`, SITL or MAVProxy. See the docstrings in `f
 ## Check it works
 
 ```powershell
-.\.venv\Scripts\python selftest.py            # or: selftest.py inav
+.\.venv\Scripts\python selftest.py            # or: selftest.py inav | ardupilot | mockcam
 ```
 
 For INAV and ArduPilot, starts the simulated FC, plays a synthetic scene through the tracker, and watches

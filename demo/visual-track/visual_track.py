@@ -109,21 +109,23 @@ class FaceDetector(_Scaled):
 
 
 class YoloDetector:
-    """Optional: Ultralytics YOLO, class 'person'. Far more robust (any pose, aerial view, range).
-    Needs `pip install ultralytics` (pulls PyTorch); the weights file downloads on first use."""
+    """Optional: Ultralytics YOLO. By default the COCO 'person' class (far more robust than HOG: any pose,
+    aerial view, range). Point --weights at your own model and --classes at its class ids to lock onto
+    something else, e.g. a building model you trained. Needs `pip install ultralytics` (pulls PyTorch);
+    the default weights file downloads on first use."""
 
     name = "yolo"
 
-    def __init__(self, weights="yolov8n.pt", min_conf=0.4):
+    def __init__(self, weights="yolov8n.pt", classes=(0,), min_conf=0.4):
         try:
             from ultralytics import YOLO
         except ImportError:
             sys.exit("--detector yolo needs: pip install ultralytics")
-        self.model, self.min_conf = YOLO(weights), min_conf
+        self.model, self.classes, self.min_conf = YOLO(weights), list(classes), min_conf
 
     def detect(self, frame):
         out = []
-        for r in self.model.predict(frame, classes=[0], conf=self.min_conf, verbose=False):
+        for r in self.model.predict(frame, classes=self.classes, conf=self.min_conf, verbose=False):
             for (x1, y1, x2, y2), c in zip(r.boxes.xyxy.tolist(), r.boxes.conf.tolist()):
                 out.append(Det(int(x1), int(y1), int(x2 - x1), int(y2 - y1), float(c)))
         return out
@@ -135,7 +137,49 @@ def _overlap(a, b):
     return ix * iy / max(1, min(a.area, b.area))
 
 
-DETECTORS = {"hog": HogDetector, "face": FaceDetector, "yolo": YoloDetector}
+class ColorDetector(_Scaled):
+    """A brightly coloured target (a painted building, a panel, a vest) found by HSV thresholding. Zero
+    downloads, works from any angle and range the colour is visible, and far steadier than HOG/face for a
+    demo. Also what the simulated camera's orange building is found with."""
+
+    name = "color"
+    # colour -> list of (lower HSV, upper HSV); OpenCV hue runs 0-179, red wraps around it
+    RANGES = {
+        "green": [((35, 80, 60), (85, 255, 255))],
+        "orange": [((5, 120, 100), (22, 255, 255))],
+        "yellow": [((22, 100, 100), (35, 255, 255))],
+        "blue": [((95, 120, 60), (130, 255, 255))],
+        "red": [((0, 120, 80), (8, 255, 255)), ((172, 120, 80), (179, 255, 255))],
+    }
+    min_area_frac = 0.002  # smallest blob, as a fraction of the (downscaled) frame
+
+    def __init__(self, colour="green"):
+        if colour not in self.RANGES:
+            sys.exit(f"--color must be one of {', '.join(self.RANGES)}")
+        self.colour = colour
+
+    def _detect(self, img):
+        hsv = cv2.cvtColor(cv2.GaussianBlur(img, (7, 7), 0), cv2.COLOR_BGR2HSV)
+        mask = np.zeros(hsv.shape[:2], np.uint8)
+        for lo, hi in self.RANGES[self.colour]:
+            mask |= cv2.inRange(hsv, np.array(lo, np.uint8), np.array(hi, np.uint8))
+        kernel = np.ones((5, 5), np.uint8)
+        mask = cv2.morphologyEx(cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel), cv2.MORPH_CLOSE, kernel)
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        floor = self.min_area_frac * img.shape[0] * img.shape[1]
+        return [Det(*cv2.boundingRect(c)) for c in contours if cv2.contourArea(c) >= floor]
+
+
+DETECTORS = {"hog": HogDetector, "face": FaceDetector, "yolo": YoloDetector, "color": ColorDetector}
+
+
+def make_detector(args):
+    cls = DETECTORS[args.detector]
+    if cls is ColorDetector:
+        return cls(args.color)
+    if cls is YoloDetector:
+        return cls(args.weights, args.classes)
+    return cls()
 
 
 # ===================================================================================================
@@ -253,7 +297,7 @@ class VisualTrack:
                 self.hits = 0
                 self.sm_cx = target.cx
                 self.ref_yaw = fc.yaw_deg
-                fc.say("VISUAL TRACK: human detected - MISSION OVERRIDE")
+                fc.say("VISUAL TRACK: target detected - MISSION OVERRIDE")
                 fc.begin_override()
                 self._go(OVERRIDE)
 
@@ -351,7 +395,15 @@ def open_camera(src, w, h):
     return cap
 
 
-def draw_hud(frame, trk, fc, target, args, fps):
+def lock_brackets(frame, t, col, pad=10, arm=16):
+    """Corner brackets around the target box: the 'locked on' cue."""
+    x1, y1, x2, y2 = t.x - pad, t.y - pad, t.x + t.w + pad, t.y + t.h + pad
+    for (px, py, dx, dy) in ((x1, y1, 1, 1), (x2, y1, -1, 1), (x1, y2, 1, -1), (x2, y2, -1, -1)):
+        cv2.line(frame, (px, py), (px + dx * arm, py), col, 3)
+        cv2.line(frame, (px, py), (px, py + dy * arm), col, 3)
+
+
+def draw_hud(frame, trk, fc, target, args, fps, extra=()):
     h, w = frame.shape[:2]
     col = STATE_COLOUR[trk.state]
     cv2.rectangle(frame, (0, 0), (w, 34), col, -1)
@@ -363,13 +415,18 @@ def draw_hud(frame, trk, fc, target, args, fps):
         cv2.rectangle(frame, (target.x, target.y), (target.x + target.w, target.y + target.h), tcol, 2)
         cv2.circle(frame, (int(target.cx), int(target.cy)), 5, tcol, -1)
         if trk.state == LOCKED:
+            lock_brackets(frame, target, tcol)
             cv2.line(frame, (w // 2, h // 2), (int(target.cx), int(target.cy)), tcol, 1)
-        label = f"{'LOCK' if trk.state == LOCKED else 'person'} {target.conf:.2f}" if target.conf != 1.0 else "person"
-        cv2.putText(frame, label, (target.x, max(14, target.y - 6)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, tcol, 1, cv2.LINE_AA)
+            cv2.putText(frame, f"TARGET LOCKED  {trk.err_deg:+.1f} deg", (target.x - 10, max(14, target.y - 22)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.55, tcol, 2, cv2.LINE_AA)
+        else:
+            label = f"target {target.conf:.2f}" if target.conf != 1.0 else "target detected"
+            cv2.putText(frame, label, (target.x, max(14, target.y - 6)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, tcol, 1, cv2.LINE_AA)
     yaw = f"{fc.yaw_deg:5.1f}" if fc.yaw_deg is not None else "  ?  "
     lines = [f"FC: {fc.mode_text}  {'ARMED' if fc.armed else 'disarmed'}   heading {yaw} deg",
              f"yaw cmd {trk.last_cmd:+5.1f} deg/s   err {trk.err_deg:+5.1f} deg   {fps:4.1f} fps  [{args.detector}]"]
-    if args.sim_pan:
+    lines.extend(extra)
+    if args.sim_pan and not extra:
         lines.append("SIMULATED CAMERA PAN (view shifts with drone yaw)")
     for i, t in enumerate(reversed(lines)):
         cv2.putText(frame, t, (10, h - 10 - 22 * i), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 2, cv2.LINE_AA)
@@ -407,16 +464,33 @@ def parse_args(argv=None):
     g.add_argument("--sysid", type=int, default=1, help="our MAVLink system id (default 1 = same as FC)")
     g.add_argument("--compid", type=int, default=191, help="our component id (default 191 = onboard computer)")
     g = ap.add_argument_group("camera / detection")
-    g.add_argument("--source", default="0", help="camera index, video file or rtsp:// URL")
+    g.add_argument("--source", default="0",
+                   help="camera index, video file, rtsp:// URL, or 'mock' = the simulated drone camera "
+                        "(a swaying target building, drawn from the drone's real heading)")
     g.add_argument("--width", type=int, default=640)
     g.add_argument("--height", type=int, default=480)
     g.add_argument("--hfov", type=float, default=70.0, help="camera horizontal field of view, degrees")
     g.add_argument("--detector", choices=DETECTORS, default="hog",
-                   help="hog = full body (default), face = best for a desk webcam, yolo = optional/robust")
+                   help="hog = full body (default), face = best for a desk webcam, yolo = optional/robust, "
+                        "color = lock onto a coloured target (see --color; what --source mock uses)")
+    g.add_argument("--color", default="green", choices=list(ColorDetector.RANGES),
+                   help="colour for --detector color (default green; the mock building is orange)")
+    g.add_argument("--weights", default="yolov8n.pt",
+                   help="--detector yolo: model file (default yolov8n.pt = COCO; use your own building model)")
+    g.add_argument("--classes", type=int, nargs="+", default=[0],
+                   help="--detector yolo: class ids to lock onto (default 0 = person)")
     g.add_argument("--mirror", action="store_true", help="flip the image horizontally (selfie view)")
     g.add_argument("--headless", action="store_true", help="no preview window")
     g.add_argument("--sim-pan", action="store_true",
                    help="demo aid: shift the picture with the drone's yaw so a fixed webcam closes the loop")
+    g.add_argument("--duration", type=float, default=0.0, help="stop after this many seconds (default 0 = run until quit)")
+    g = ap.add_argument_group("simulated camera (--source mock)")
+    g.add_argument("--mock-bearing", type=float, default=60.0, help="compass bearing of the target building, deg (default 60)")
+    g.add_argument("--mock-sway", type=float, default=18.0, help="target swings +/- this many deg left and right (default 18)")
+    g.add_argument("--mock-period", type=float, default=12.0, help="seconds per left-right swing (default 12)")
+    g.add_argument("--mock-hold", type=float, default=25.0,
+                   help="hide the target this long after the lock started, so the mission resumes (0 = never)")
+    g.add_argument("--mock-hide", type=float, default=20.0, help="seconds the target stays hidden (default 20)")
     g = ap.add_argument_group("behaviour")
     g.add_argument("--confirm-frames", type=int, default=5, help="consecutive hits before overriding")
     g.add_argument("--lost-timeout", type=float, default=3.0, help="seconds without target before resuming")
@@ -433,17 +507,30 @@ def parse_args(argv=None):
 
 def run(args, frames=None):
     """frames: optional iterator of BGR images (tests); default is the camera."""
-    detector = DETECTORS[args.detector]()
-    cap = None
+    detector = make_detector(args)
+    cap = cam = None
     if frames is None:
-        cap = open_camera(args.source, args.width, args.height)
+        if args.source == "mock":
+            from mock_camera import MockCamera
+            cam = MockCamera(args)
+        else:
+            cap = open_camera(args.source, args.width, args.height)
     fc = connect_fc(args)
 
     trk = VisualTrack(fc, args)
+    trk.cam = cam  # None unless --source mock; lets tests read the target's true bearing
     last_hb, fps, t_prev = 0.0, 0.0, time.monotonic()
+    t_start = t_next = time.monotonic()
     try:
         while True:
-            if frames is None:
+            if args.duration and time.monotonic() - t_start > args.duration:
+                break
+            if cam is not None:
+                time.sleep(max(0.0, t_next - time.monotonic()))  # ~20 fps
+                t_next = max(t_next, time.monotonic() - 0.05) + 0.05
+                # the picture is drawn from the heading the FC reports right now, so view, lock and yaw stay in step
+                frame = cam.render(fc.yaw_deg, trk.state == LOCKED)
+            elif frames is None:
                 ok, frame = cap.read()
                 if not ok:
                     if str(args.source).isdigit():
@@ -455,9 +542,9 @@ def run(args, frames=None):
                 frame = next(frames, None)
                 if frame is None:
                     break
-            if args.mirror:
+            if args.mirror and cam is None:
                 frame = cv2.flip(frame, 1)
-            if args.sim_pan:
+            if args.sim_pan and cam is None:  # the mock camera already draws from the real heading
                 frame = sim_pan(frame, trk, fc)
 
             dets = detector.detect(frame)
@@ -474,7 +561,7 @@ def run(args, frames=None):
                 for d in dets:
                     if d is not target:
                         cv2.rectangle(frame, (d.x, d.y), (d.x + d.w, d.y + d.h), (120, 120, 120), 1)
-                draw_hud(frame, trk, fc, target, args, fps)
+                draw_hud(frame, trk, fc, target, args, fps, cam.info(fc.yaw_deg) if cam else ())
                 cv2.imshow("MaxGCS visual track  (q = quit)", frame)
                 if cv2.waitKey(1) & 0xFF in (ord("q"), 27):
                     break

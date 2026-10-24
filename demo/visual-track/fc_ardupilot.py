@@ -19,6 +19,8 @@ COPTER_TYPES = {2, 3, 4, 13, 14, 15}  # quad, coax, heli, hexa, octo, tri
 TYPEMASK_VEL_YAWRATE = 0b0000_0101_1100_0111
 MAV_FRAME_LOCAL_NED = 1
 CMD_DO_SET_MODE = 176
+MAV_CMD_SET_MESSAGE_INTERVAL = 511
+MSG_ATTITUDE = 30
 
 
 class ArduPilotLink:
@@ -99,6 +101,21 @@ class ArduPilotLink:
             self.m.mav.heartbeat_send(mavutil.mavlink.MAV_TYPE_ONBOARD_CONTROLLER,
                                       mavutil.mavlink.MAV_AUTOPILOT_INVALID, 0, 0,
                                       mavutil.mavlink.MAV_STATE_ACTIVE)
+        self._request_attitude()
+
+    def _request_attitude(self):
+        """A real ArduPilot port streams nothing until asked (SRn_* = 0 by default), so the heading would
+        never arrive. Ask for ATTITUDE at 10 Hz, both ways (new firmware / old); re-sent every 5 s in case
+        the FC rebooted. A simulator that doesn't support the request just answers 'unsupported'."""
+        now = time.monotonic()
+        if not self.target_sys or now - getattr(self, "_att_req", 0.0) < 5.0:
+            return
+        self._att_req = now
+        with self.lock:
+            self.m.mav.command_long_send(self.target_sys, 1, MAV_CMD_SET_MESSAGE_INTERVAL, 0,
+                                         MSG_ATTITUDE, 100_000, 0, 0, 0, 0, 0)
+            self.m.mav.request_data_stream_send(self.target_sys, 1, mavutil.mavlink.MAV_DATA_STREAM_EXTRA1,
+                                                10, 1)
 
     def _set_mode(self, mode):
         with self.lock:
