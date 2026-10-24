@@ -31,6 +31,7 @@ class ArduPilotLink:
         self.m = mavutil.mavlink_connection(a.connect, baud=a.baud, source_system=a.sysid,
                                             source_component=a.compid, autoreconnect=True)
         self.target_sys = 0
+        self.no_buzzer = getattr(a, "no_buzzer", False)
         self.lock = threading.Lock()
         self.mode = None
         self.armed = False
@@ -138,6 +139,19 @@ class ArduPilotLink:
             self.m.mav.set_position_target_local_ned_send(
                 0, self.target_sys or 1, 1, MAV_FRAME_LOCAL_NED, TYPEMASK_VEL_YAWRATE,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, math.radians(rate_deg_s))
+
+    # Tunes in ArduPilot's MML (max 30 chars for PLAY_TUNE). Played by the FC's ToneAlarm output, so the pilot
+    # standing by the aircraft hears them. A board with only a plain on/off buzzer ignores them.
+    TUNES = {"detected": b"MFT220L16O5CE", "locked": b"MFT220L16O5EGC>C", "lost": b"MFT160L8O5GE",
+             "resumed": b"MFT220L16O4CC", "released": b"MFT240L32O6CCCC"}
+
+    def cue(self, name):
+        """Audible cue on the aircraft, in step with the tracker's state changes."""
+        tune = self.TUNES.get(name)
+        if tune is None or getattr(self, "no_buzzer", False):
+            return
+        with self.lock:
+            self.m.mav.play_tune_send(self.target_sys or 1, 1, tune)
 
     def say(self, text, warn=False):
         self.log(f"[fc-msg] {text}")

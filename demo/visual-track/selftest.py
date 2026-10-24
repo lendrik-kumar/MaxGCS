@@ -26,6 +26,7 @@ import numpy as np  # noqa: E402
 import visual_track as vt  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+vt_tunes = {k: v.decode() for k, v in __import__("fc_ardupilot").ArduPilotLink.TUNES.items()}
 W, H = 640, 480
 APPEAR, VANISH, END = 2.0, 14.0, 26.0
 PERSON_X = 500  # block centre, px (right of centre -> expect a clockwise yaw of ~21 deg)
@@ -277,13 +278,85 @@ def run_mockcam():
           [i for i, t in enumerate(log["text"]) if "MISSION OVERRIDE" in t][:1] <
           [i for i, t in enumerate(log["text"]) if "RESUMING" in t][:1] and
           any("MISSION OVERRIDE" in t for t in log["text"]))
+    tunes = [ln.split("BUZZER", 1)[1] for ln in mock_out.splitlines() if "BUZZER" in ln]
+    got = [t.rsplit(":", 1)[1].strip().strip(chr(0)) for t in tunes]
+    print("buzzer cues the FC received:", got)
+    check("FC buzzer played detected -> locked -> lost -> resumed", got[:4] == [vt_tunes[k] for k in ("detected", "locked", "lost", "resumed")],
+          f"(got {got[:4]!r}, want {[vt_tunes[k] for k in ("detected", "locked", "lost", "resumed")]!r})")
+    check("yaw-controller history recorded for the panel", len(trk.hist) > 100, f"({len(trk.hist)} samples)")
     check("final state is PATROL", trk.state == vt.PATROL, f"(state {trk.state})")
     return all(checks)
 
 
+def run_cues():
+    """Pilot cues without hardware: rumble patterns on a fake gamepad, and which tracker event fires when."""
+    print("\n=========== CUES - gamepad rumble patterns and tracker events")
+    import haptics
+    checks = []
+
+    def check(name, ok, detail=""):
+        checks.append(ok)
+        print(f"[{'PASS' if ok else 'FAIL'}] {name} {detail}")
+
+    class FakePad:
+        def __init__(self):
+            self.calls = []
+
+        def set(self, low, high):
+            self.calls.append((low, high))
+            return True
+
+    class FakeClock:
+        t = 100.0
+
+        def __call__(self):
+            return self.t
+
+    for name, pattern in haptics.PATTERNS.items():
+        pad, clock = FakePad(), FakeClock()
+        h = haptics.Haptics(pad, clock)
+        h.cue(name)
+        for _ in range(int(sum(d for d, _, _ in pattern) / 0.01) + 20):
+            clock.t += 0.01
+            h.tick()
+        buzzes = sum(1 for i, c in enumerate(pad.calls) if c != (0.0, 0.0) and (i == 0 or pad.calls[i - 1] == (0.0, 0.0)))
+        want = sum(1 for i, (_, lo, hi) in enumerate(pattern) if (lo or hi) and (i == 0 or not (pattern[i - 1][1] or pattern[i - 1][2])))
+        check(f"rumble '{name}': {want} buzz(es), then silence", buzzes == want and pad.calls[-1] == (0.0, 0.0),
+              f"({buzzes} buzzes, ends {pad.calls[-1]})")
+    check("the five events feel different", len({tuple(p) for p in haptics.PATTERNS.values()}) == 5)
+
+    a = vt.parse_args(["--no-fc", "--headless", "--confirm-frames", "2", "--lost-timeout", "1.0", "--cooldown", "0"])
+    fc, events = vt.NullLink(), []
+    trk = vt.VisualTrack(fc, a)
+    trk.cues.append(events.append)
+    det = vt.Det(450, 200, 40, 100)
+    for dets, secs in (([det], 0.6), ([], 2.5)):
+        for _ in range(int(secs * 20)):
+            trk.update(dets, 640)
+            time.sleep(0.05)
+    check("events fire once each, in order", events == ["detected", "locked", "lost", "resumed"], f"({events})")
+    check("controller history has error and rate samples", len(trk.hist) > 5 and any(c != 0 for _, _, c in trk.hist),
+          f"({len(trk.hist)} samples)")
+
+    def boom(_):
+        raise RuntimeError("no gamepad")
+    a2 = vt.parse_args(["--no-fc", "--headless", "--confirm-frames", "2"])
+    trk2 = vt.VisualTrack(vt.NullLink(), a2)
+    trk2.cues.append(boom)
+    for _ in range(10):
+        trk2.update([det], 640)
+    check("a failing cue device never stops the tracker", trk2.state != vt.PATROL, f"(state {trk2.state})")
+    return all(checks)
+
+
 if __name__ == "__main__":
-    which = sys.argv[1:] or ["inav", "ardupilot", "mockcam"]
+    which = sys.argv[1:] or ["inav", "ardupilot", "mockcam", "cues"]
     ok = True
+    if "cues" in which:
+        r = run_cues()
+        print("RESULT:", "ALL PASS" if r else "FAILURES")
+        ok = ok and r
+        which = [w for w in which if w != "cues"]
     if "mockcam" in which:
         r = run_mockcam()
         print("RESULT:", "ALL PASS" if r else "FAILURES")
