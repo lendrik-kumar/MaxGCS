@@ -25,6 +25,7 @@ import argparse
 import math
 import sys
 import time
+from collections import deque
 from dataclasses import dataclass
 
 import cv2  # noqa: E402
@@ -221,6 +222,9 @@ class NullLink:
     def say(self, text, warn=False):
         print(f"[fc-msg] {text}", flush=True)
 
+    def cue(self, name):
+        pass
+
     def close(self):
         pass
 
@@ -267,10 +271,25 @@ class VisualTrack:
         self.err_deg = 0.0
         self.fx = None  # focal length in px, set from first frame size
         self.ref_yaw = None  # heading when lock started (for --sim-pan)
+        self.hist = deque(maxlen=400)  # (t, error deg, rate cmd deg/s) of the yaw controller while locked
+        self.cues = []  # callables fed the event name: FC buzzer, gamepad rumble, ...
+        self.last_cue = ("", 0.0)  # (event, time) for the on-screen banner
+
+    # state entered -> event the pilot is told about
+    CUE_FOR = {OVERRIDE: "detected", LOCKED: "locked", RESUME: "lost", PILOT: "released"}
 
     def _go(self, state):
-        self.state, self.t_state = state, time.monotonic()
+        prev, now = self.state, time.monotonic()
+        self.state, self.t_state = state, now
         print(f"[track] -> {state}", flush=True)
+        event = "resumed" if (state == PATROL and prev == RESUME) else self.CUE_FOR.get(state)
+        if event:
+            self.last_cue = (event, now)
+            for fn in self.cues:
+                try:
+                    fn(event)
+                except Exception as e:  # a missing buzzer or gamepad must never stop the tracker
+                    print(f"[cue] {event}: {e}", file=sys.stderr, flush=True)
 
     def _pick(self, dets):
         if not dets:
@@ -331,6 +350,7 @@ class VisualTrack:
                 self.err_deg, rate = 0.0, 0.0  # target momentarily gone: hold heading, keep the override
             fc.yaw_rate(rate)
             self.last_cmd = rate
+            self.hist.append((now, self.err_deg, rate))
             if now - self.t_seen > a.lost_timeout:
                 self.last_cmd = 0.0
                 fc.say("VISUAL TRACK: target lost - RESUMING MISSION")
@@ -403,6 +423,72 @@ def lock_brackets(frame, t, col, pad=10, arm=16):
         cv2.line(frame, (px, py), (px, py + dy * arm), col, 3)
 
 
+CUE_TEXT = {"detected": ("TARGET DETECTED", (0, 200, 255)), "locked": ("TARGET LOCKED", (0, 0, 230)),
+            "lost": ("TARGET LOST", (0, 140, 255)), "resumed": ("MISSION RESUMED", (0, 170, 0)),
+            "released": ("PILOT TOOK OVER", (200, 120, 0))}
+CUE_SECONDS = 2.0
+
+
+def draw_cue_banner(frame, trk):
+    """Big banner for a couple of seconds after each event, matching the buzzer / gamepad cue."""
+    event, t = trk.last_cue
+    if not event or time.monotonic() - t > CUE_SECONDS:
+        return
+    text, col = CUE_TEXT[event]
+    h, w = frame.shape[:2]
+    (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_DUPLEX, 1.2, 2)
+    x, y = (w - tw) // 2, h // 2 - 60
+    cv2.rectangle(frame, (x - 14, y - th - 12), (x + tw + 14, y + 14), (0, 0, 0), -1)
+    cv2.rectangle(frame, (x - 14, y - th - 12), (x + tw + 14, y + 14), col, 2)
+    cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_DUPLEX, 1.2, col, 2, cv2.LINE_AA)
+
+
+def draw_controller(frame, trk, a, target=None):
+    """Live view of the yaw controller: error in, rate command out, last ~10 s, with its limits.
+    Sits on whichever side of the picture the target is not."""
+    h, w = frame.shape[:2]
+    pw, ph = 230, 150
+    x0, y0 = (8 if target is not None and target.cx > w / 2 else w - pw - 8), 42
+    ov = frame.copy()
+    cv2.rectangle(ov, (x0, y0), (x0 + pw, y0 + ph), (0, 0, 0), -1)
+    cv2.addWeighted(ov, 0.6, frame, 0.4, 0, frame)
+    cv2.rectangle(frame, (x0, y0), (x0 + pw, y0 + ph), (160, 160, 160), 1)
+    cv2.putText(frame, "YAW CONTROLLER (P)", (x0 + 6, y0 + 16), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
+    locked = trk.state == LOCKED
+    sat = locked and abs(trk.last_cmd) >= a.max_rate - 1e-6
+    inband = locked and abs(trk.err_deg) < a.deadband
+    cv2.putText(frame, f"error {trk.err_deg:+6.1f} deg" if locked else "error    --", (x0 + 6, y0 + 34),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
+    cmd_col = (0, 0, 255) if sat else (255, 255, 255)
+    cv2.putText(frame, f"rate  {trk.last_cmd:+6.1f} deg/s" if locked else "rate     --", (x0 + 6, y0 + 50),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.45, cmd_col, 1, cv2.LINE_AA)
+    flag = "LIMIT" if sat else "DEADBAND" if inband else ""
+    cv2.putText(frame, flag, (x0 + 170, y0 + 16), cv2.FONT_HERSHEY_SIMPLEX, 0.36, (0, 0, 255) if sat else (0, 220, 0), 1, cv2.LINE_AA)
+    # plot area: error (cyan, scaled to +/-45 deg) and command (orange, scaled to +/-max rate), last 10 s
+    gx0, gy0, gw, gh = x0 + 6, y0 + 58, pw - 12, 66
+    cv2.rectangle(frame, (gx0, gy0), (gx0 + gw, gy0 + gh), (90, 90, 90), 1)
+    mid = gy0 + gh // 2
+    cv2.line(frame, (gx0, mid), (gx0 + gw, mid), (90, 90, 90), 1)
+    db = int(a.deadband / 45.0 * gh / 2)
+    cv2.rectangle(frame, (gx0, mid - db), (gx0 + gw, mid + db), (60, 90, 60), 1)  # deadband
+    now = time.monotonic()
+    pts_e, pts_c = [], []
+    for t, e, c in trk.hist:
+        age = now - t
+        if age > 10.0:
+            continue
+        px = int(gx0 + gw - age / 10.0 * gw)
+        pts_e.append((px, int(mid - max(-45, min(45, e)) / 45.0 * gh / 2)))
+        pts_c.append((px, int(mid - max(-a.max_rate, min(a.max_rate, c)) / a.max_rate * gh / 2)))
+    if len(pts_e) > 1:
+        cv2.polylines(frame, [np.array(pts_e, np.int32)], False, (255, 220, 0), 1, cv2.LINE_AA)
+        cv2.polylines(frame, [np.array(pts_c, np.int32)], False, (0, 140, 255), 1, cv2.LINE_AA)
+    cv2.putText(frame, f"kp {a.kp:g}  dead +/-{a.deadband:g}  max {a.max_rate:g}/s", (x0 + 6, y0 + ph - 6),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.38, (200, 200, 200), 1, cv2.LINE_AA)
+    cv2.putText(frame, "err", (gx0 + 2, gy0 + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.33, (255, 220, 0), 1, cv2.LINE_AA)
+    cv2.putText(frame, "cmd", (gx0 + 26, gy0 + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.33, (0, 140, 255), 1, cv2.LINE_AA)
+
+
 def draw_hud(frame, trk, fc, target, args, fps, extra=()):
     h, w = frame.shape[:2]
     col = STATE_COLOUR[trk.state]
@@ -422,6 +508,8 @@ def draw_hud(frame, trk, fc, target, args, fps, extra=()):
         else:
             label = f"target {target.conf:.2f}" if target.conf != 1.0 else "target detected"
             cv2.putText(frame, label, (target.x, max(14, target.y - 6)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, tcol, 1, cv2.LINE_AA)
+    draw_controller(frame, trk, args, target)
+    draw_cue_banner(frame, trk)
     yaw = f"{fc.yaw_deg:5.1f}" if fc.yaw_deg is not None else "  ?  "
     lines = [f"FC: {fc.mode_text}  {'ARMED' if fc.armed else 'disarmed'}   heading {yaw} deg",
              f"yaw cmd {trk.last_cmd:+5.1f} deg/s   err {trk.err_deg:+5.1f} deg   {fps:4.1f} fps  [{args.detector}]"]
@@ -493,6 +581,10 @@ def parse_args(argv=None):
     g.add_argument("--mock-hide", type=float, default=20.0, help="seconds the target stays hidden (default 20)")
     g = ap.add_argument_group("behaviour")
     g.add_argument("--confirm-frames", type=int, default=5, help="consecutive hits before overriding")
+    g.add_argument("--rumble", action="store_true",
+                   help="pilot feedback: buzz an XInput gamepad on detect / lock / lost / resume / pilot-takeover")
+    g.add_argument("--no-buzzer", action="store_true",
+                   help="ArduPilot: don't play the cue tunes on the FC's buzzer (they are on by default)")
     g.add_argument("--lost-timeout", type=float, default=3.0, help="seconds without target before resuming")
     g.add_argument("--cooldown", type=float, default=3.0, help="seconds before a new trigger is allowed")
     g.add_argument("--kp", type=float, default=1.0, help="yaw rate (deg/s) per degree of error")
@@ -519,6 +611,13 @@ def run(args, frames=None):
 
     trk = VisualTrack(fc, args)
     trk.cam = cam  # None unless --source mock; lets tests read the target's true bearing
+    if hasattr(fc, "cue"):
+        trk.cues.append(fc.cue)  # FC buzzer (ArduPilot)
+    haptics = None
+    if args.rumble:
+        from haptics import Haptics
+        haptics = Haptics()
+        trk.cues.append(haptics.cue)
     last_hb, fps, t_prev = 0.0, 0.0, time.monotonic()
     t_start = t_next = time.monotonic()
     try:
@@ -549,6 +648,8 @@ def run(args, frames=None):
 
             dets = detector.detect(frame)
             target = trk.update(dets, frame.shape[1])
+            if haptics:
+                haptics.tick()
 
             now = time.monotonic()
             if now - last_hb > 1.0:
@@ -569,6 +670,8 @@ def run(args, frames=None):
         pass
     finally:
         trk.release()
+        if haptics:
+            haptics.close()
         fc.close()
         if cap:
             cap.release()

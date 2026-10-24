@@ -205,6 +205,8 @@ class MockFc:
                                         len(self.wps) + 1, 0)
         elif mt in ("MISSION_REQUEST_INT", "MISSION_REQUEST"):
             self.send_mission_item(msg.seq, msg.get_srcSystem(), msg.get_srcComponent())
+        elif mt == "PLAY_TUNE":
+            self.log(f"BUZZER from {who}: {msg.tune}")  # a real FC plays this on its ToneAlarm output
         elif mt == "STATUSTEXT":
             # visual_track.py narrates the demo through STATUSTEXT; forward it to the GCS the way a
             # MAVLink router would, so it shows up as a toast in MaxGCS.

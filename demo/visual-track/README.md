@@ -136,6 +136,32 @@ model and run `--detector yolo --weights building.pt --classes 0` (not exercised
 `selftest.py mockcam` runs this closed loop against the simulated ArduPilot and asserts the heading stays
 on the swaying target (median error under 10°), swings both ways, held position, and the mission resumed.
 
+## Feedback for the pilot and for the yaw controller
+
+**Controller view (PID).** The camera window has a **YAW CONTROLLER (P)** panel while locked: the live
+error (degrees off-centre) and the rate command (deg/s), a 10-second plot of both, the deadband, and a
+`DEADBAND` / `LIMIT` flag when the command is inside the dead zone or hitting `--max-rate`. It sits on the
+side of the picture the target is not on. Tune with `--kp`, `--deadband`, `--max-rate` and watch the plot.
+
+**Pilot cues.** Every tracker event is announced the same way on all channels, so the pilot always knows
+who is flying:
+
+| Event | On screen | FC buzzer (ArduPilot) | Gamepad `--rumble` |
+|---|---|---|---|
+| `detected` (taking over) | TARGET DETECTED | rising two-note chirp | two light taps |
+| `locked` (yawing onto it) | TARGET LOCKED + brackets | rising three-note | two strong thumps |
+| `lost` (handing back) | TARGET LOST | falling two-note | one long soft rumble |
+| `resumed` (mission flying again) | MISSION RESUMED | short double beep | one short pulse |
+| `released` (pilot/failsafe took over) | PILOT TOOK OVER | fast high chirp | three sharp buzzes |
+
+- **FC buzzer:** sent as MAVLink `PLAY_TUNE`, on by default for ArduPilot (`--no-buzzer` turns it off). It is
+  played by the FC's ToneAlarm output; a board with only a plain on/off buzzer ignores it. The same events
+  also go out as `STATUSTEXT`, which MaxGCS shows and a telemetry-capable radio can display.
+- **Gamepad rumble:** `--rumble` buzzes an XInput pad (Xbox-style) plugged into the PC running the tracker.
+  Windows only, no extra packages; a PlayStation pad needs an XInput wrapper such as DS4Windows.
+  The patterns are tested with a fake pad; no real pad was used.
+- INAV has no buzzer command over MSP, so INAV gets the on-screen cues and rumble only.
+
 ## Options
 
 | Flag | Default | |
