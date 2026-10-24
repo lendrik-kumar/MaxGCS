@@ -162,6 +162,29 @@ who is flying:
   The patterns are tested with a fake pad; no real pad was used.
 - INAV has no buzzer command over MSP, so INAV gets the on-screen cues and rumble only.
 
+## Seeing what happened afterwards
+
+The console only prints text, so two options save something you can look at once the run is over. Give
+a file name, or none to save into `runs/<date-time>.mp4` / `.png` (that folder is git-ignored):
+
+```powershell
+.\.venv\Scripts\python visual_track.py --fc ardupilot --connect udpin:0.0.0.0:14551 --source mock --detector color --color orange --record --report
+```
+
+- **`--record [FILE]`**: a video of exactly what the live window shows: the camera picture, lock brackets,
+  event banners and the yaw-controller panel. It also records with `--headless`, so a Pi with no screen can
+  still keep a video.
+- **`--report [FILE]`**: one PNG timeline written when the run ends:
+  - tracker state and FC mode (PATROL/LOCKED, AUTO/GUIDED) over time;
+  - drone heading against the target's bearing (the simulated camera knows the truth), zoomed on the lock
+    so you can see the heading follow the sway;
+  - yaw error and rate command against the deadband;
+  - the pilot cues (detected / locked / lost / resumed / released) as dashed lines;
+  - a summary line per lock: how long, median and 95th-percentile yaw error, heading-vs-target error.
+
+With a real camera there is no target-bearing truth, so the heading panel shows the heading alone; the
+error and rate panel is the same. `selftest.py mockcam` also checks that both files are produced and valid.
+
 ## Options
 
 | Flag | Default | |

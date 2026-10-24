@@ -26,6 +26,8 @@ import numpy as np  # noqa: E402
 import visual_track as vt  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+REC_VIDEO = os.path.join(HERE, "runs", "selftest-mockcam.mp4")  # runs/ is git-ignored
+REC_REPORT = os.path.join(HERE, "runs", "selftest-mockcam.png")
 vt_tunes = {k: v.decode() for k, v in __import__("fc_ardupilot").ArduPilotLink.TUNES.items()}
 W, H = 640, 480
 APPEAR, VANISH, END = 2.0, 14.0, 26.0
@@ -229,7 +231,8 @@ def run_mockcam():
     threading.Thread(target=obs.run, args=(log, stop), daemon=True).start()
     args = vt.parse_args(["--fc", "ardupilot", "--connect", f"udpin:0.0.0.0:{trk_port}", "--source", "mock",
                           "--detector", "color", "--color", "orange", "--headless", "--lost-timeout", "2.5",
-                          "--kp", "1.5", "--mock-hold", "24", "--mock-hide", "999", "--duration", "75"])
+                          "--kp", "1.5", "--mock-hold", "24", "--mock-hide", "999", "--duration", "75",
+                          "--record", REC_VIDEO, "--report", REC_REPORT])
     try:
         trk = vt.run(args)
     finally:
@@ -284,6 +287,19 @@ def run_mockcam():
     check("FC buzzer played detected -> locked -> lost -> resumed", got[:4] == [vt_tunes[k] for k in ("detected", "locked", "lost", "resumed")],
           f"(got {got[:4]!r}, want {[vt_tunes[k] for k in ("detected", "locked", "lost", "resumed")]!r})")
     check("yaw-controller history recorded for the panel", len(trk.hist) > 100, f"({len(trk.hist)} samples)")
+
+    cap = cv2.VideoCapture(REC_VIDEO)
+    n, w, h = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)), int(cap.get(3)), int(cap.get(4))
+    mid = None
+    if n > 0:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, n // 2)
+        _, mid = cap.read()
+    cap.release()
+    check("--record: video plays back", n > 500 and (w, h) == (640, 480) and mid is not None and mid.std() > 10,
+          f"({n} frames, {w}x{h})")
+    rep = cv2.imread(REC_REPORT)
+    check("--report: timeline PNG written", rep is not None and rep.shape == (900, 1400, 3) and rep.std() > 20,
+          f"({None if rep is None else rep.shape})")
     check("final state is PATROL", trk.state == vt.PATROL, f"(state {trk.state})")
     return all(checks)
 

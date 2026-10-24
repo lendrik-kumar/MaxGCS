@@ -503,7 +503,8 @@ def draw_hud(frame, trk, fc, target, args, fps, extra=()):
         if trk.state == LOCKED:
             lock_brackets(frame, target, tcol)
             cv2.line(frame, (w // 2, h // 2), (int(target.cx), int(target.cy)), tcol, 1)
-            cv2.putText(frame, f"TARGET LOCKED  {trk.err_deg:+.1f} deg", (target.x - 10, max(14, target.y - 22)),
+            # below the box: the controller panel lives along the top, so the label never runs under it
+            cv2.putText(frame, f"TARGET LOCKED  {trk.err_deg:+.1f} deg", (max(4, target.x - 10), min(h - 84, target.y + target.h + 32)),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.55, tcol, 2, cv2.LINE_AA)
         else:
             label = f"target {target.conf:.2f}" if target.conf != 1.0 else "target detected"
@@ -572,6 +573,11 @@ def parse_args(argv=None):
     g.add_argument("--sim-pan", action="store_true",
                    help="demo aid: shift the picture with the drone's yaw so a fixed webcam closes the loop")
     g.add_argument("--duration", type=float, default=0.0, help="stop after this many seconds (default 0 = run until quit)")
+    g.add_argument("--record", nargs="?", const="auto", default=None, metavar="FILE",
+                   help="save a video of the camera window (picture + HUD) to FILE, or runs/<time>.mp4 if no FILE")
+    g.add_argument("--report", nargs="?", const="auto", default=None, metavar="FILE",
+                   help="save a timeline PNG when the run ends (state, mode, heading vs target, yaw error/rate, "
+                        "cues) to FILE, or runs/<time>.png if no FILE")
     g = ap.add_argument_group("simulated camera (--source mock)")
     g.add_argument("--mock-bearing", type=float, default=60.0, help="compass bearing of the target building, deg (default 60)")
     g.add_argument("--mock-sway", type=float, default=18.0, help="target swings +/- this many deg left and right (default 18)")
@@ -613,6 +619,11 @@ def run(args, frames=None):
     trk.cam = cam  # None unless --source mock; lets tests read the target's true bearing
     if hasattr(fc, "cue"):
         trk.cues.append(fc.cue)  # FC buzzer (ArduPilot)
+    rec = None
+    if args.record or args.report:
+        from run_report import RunRecorder
+        rec = RunRecorder(args.record, args.report)
+        trk.cues.append(rec.event)
     haptics = None
     if args.rumble:
         from haptics import Haptics
@@ -658,11 +669,18 @@ def run(args, frames=None):
             fps = 0.9 * fps + 0.1 / max(now - t_prev, 1e-3)
             t_prev = now
 
-            if not args.headless:
+            if rec:
+                locked = trk.state == LOCKED
+                rec.sample(trk.state, fc, fc.yaw_deg, cam.target_bearing() if cam and cam.target_visible() else None,
+                           trk.err_deg if locked else None, trk.last_cmd if locked else None, target is not None)
+            if not args.headless or (rec and rec.video_path):
                 for d in dets:
                     if d is not target:
                         cv2.rectangle(frame, (d.x, d.y), (d.x + d.w, d.y + d.h), (120, 120, 120), 1)
                 draw_hud(frame, trk, fc, target, args, fps, cam.info(fc.yaw_deg) if cam else ())
+                if rec:
+                    rec.write(frame)
+            if not args.headless:
                 cv2.imshow("MaxGCS visual track  (q = quit)", frame)
                 if cv2.waitKey(1) & 0xFF in (ord("q"), 27):
                     break
@@ -672,6 +690,8 @@ def run(args, frames=None):
         trk.release()
         if haptics:
             haptics.close()
+        if rec:
+            rec.finish(args)
         fc.close()
         if cap:
             cap.release()
