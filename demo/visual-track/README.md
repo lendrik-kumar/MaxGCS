@@ -162,6 +162,19 @@ who is flying:
   The patterns are tested with a fake pad; no real pad was used.
 - INAV has no buzzer command over MSP, so INAV gets the on-screen cues and rumble only.
 
+## One real FC, MaxGCS and the tracker at once (`fc_bridge.py`)
+
+A serial port can only be opened by one program, so MaxGCS and the tracker can't both open the FC's COM
+port. `fc_bridge.py` opens it once and relays MAVLink over UDP to both (close Mission Planner / QGC first):
+
+```powershell
+.\.venv\Scripts\python fc_bridge.py --fc COM11,115200
+```
+
+Then **MaxGCS → MAVLink → UDP → port 14550**, and the tracker / `fc_check.py` with
+`--connect udpin:0.0.0.0:14551`. Every FC message is copied to both; anything either sends goes to the FC.
+Tested against the simulated FC (`--fc udp:127.0.0.1:14560`); the serial side is not tested on hardware.
+
 ## Seeing what happened afterwards
 
 The console only prints text, so two options save something you can look at once the run is over. Give
