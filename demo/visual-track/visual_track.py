@@ -31,6 +31,8 @@ from dataclasses import dataclass
 import cv2  # noqa: E402
 import numpy as np  # noqa: E402
 
+from predictor import BearingPredictor, wrap180  # noqa: E402
+
 
 # ===================================================================================================
 # Detectors: frame (BGR) -> list of (x, y, w, h, confidence) in frame pixels
@@ -274,6 +276,10 @@ class VisualTrack:
         self.hist = deque(maxlen=400)  # (t, error deg, rate cmd deg/s) of the yaw controller while locked
         self.cues = []  # callables fed the event name: FC buzzer, gamepad rumble, ...
         self.last_cue = ("", 0.0)  # (event, time) for the on-screen banner
+        self.pred = BearingPredictor()  # target's world bearing: smoothed while seen, coasted while hidden
+        self.occluded_since = None  # set while the target is out of sight and we are predicting
+        self.pred_px = None  # where the target is expected in the picture (x, px) while hidden
+        self.occlusions = 0  # how many times the target vanished while locked and we predicted (for tests/stats)
 
     # state entered -> event the pilot is told about
     CUE_FOR = {OVERRIDE: "detected", LOCKED: "locked", RESUME: "lost", PILOT: "released"}
@@ -291,9 +297,21 @@ class VisualTrack:
                 except Exception as e:  # a missing buzzer or gamepad must never stop the tracker
                     print(f"[cue] {event}: {e}", file=sys.stderr, flush=True)
 
+    def _predicted_px(self, heading, frame_w):
+        """x position (px) the target should have in the picture now, from the predicted world bearing."""
+        rel = wrap180(self.pred.est - heading)
+        return frame_w / 2 + self.fx * math.tan(math.radians(max(-85.0, min(85.0, rel))))
+
     def _pick(self, dets):
         if not dets:
             return None
+        if self.state == LOCKED and self.occluded_since is not None and self.fc.yaw_deg is not None:
+            # hidden and predicting: only take a detection near where we expect it, so someone else walking
+            # past cannot steal the lock. The allowed gap widens a little the longer it stays hidden.
+            ref = self._predicted_px(self.fc.yaw_deg, self.frame_w)
+            gate = (0.25 + min(0.35, 0.1 * (time.monotonic() - self.occluded_since))) * self.frame_w
+            near = min(dets, key=lambda d: abs(d.cx - ref))
+            return near if abs(near.cx - ref) < gate else None
         if self.sm_cx is not None and self.state == LOCKED:  # stay on the person we were following
             near = min(dets, key=lambda d: abs(d.cx - self.sm_cx))
             if abs(near.cx - self.sm_cx) < 0.25 * self.frame_w:
@@ -324,6 +342,8 @@ class VisualTrack:
             if fc.override_active:
                 self.t_seen = now
                 self.ref_yaw = fc.yaw_deg
+                self.pred = BearingPredictor()
+                self.occluded_since = self.pred_px = None
                 fc.say("VISUAL TRACK: override confirmed - locking on")
                 self._go(LOCKED)
             elif now - self.t_state > 1.0:
@@ -341,18 +361,44 @@ class VisualTrack:
                 fc.release()
                 self._go(PILOT)
                 return target
+            heading = fc.yaw_deg
+            can_predict = a.predict_seconds > 0 and heading is not None
             if target:
+                if self.occluded_since is not None:
+                    print(f"[track] target back after {now - self.occluded_since:.1f} s", flush=True)
+                    self.occluded_since, self.pred_px = None, None
+                    self.sm_cx = target.cx  # restart the smoothing on the re-found target
                 self.t_seen = now
                 self.sm_cx = target.cx if self.sm_cx is None else a.smooth * target.cx + (1 - a.smooth) * self.sm_cx
                 self.err_deg = math.degrees(math.atan2(self.sm_cx - frame_w / 2, self.fx))
                 rate = 0.0 if abs(self.err_deg) < a.deadband else max(-a.max_rate, min(a.max_rate, a.kp * self.err_deg))
+                if heading is not None:  # world bearing = heading + angle in the picture
+                    self.pred.update(heading + math.degrees(math.atan2(target.cx - frame_w / 2, self.fx)), now)
+            elif can_predict and self.pred.valid and now - self.t_seen <= a.predict_seconds:
+                # Hidden (behind a tree, round a corner...): keep turning toward where it is expected to be
+                if self.occluded_since is None:
+                    self.occluded_since = now
+                    self.occlusions += 1
+                    print("[track] target hidden - predicting where it went", flush=True)
+                est = self.pred.coast(now)
+                self.pred_px = self._predicted_px(heading, frame_w)
+                self.err_deg = wrap180(est - heading)
+                # feed-forward: also turn at the target's estimated own speed, otherwise the drone only ever
+                # reacts to the gap and trails a moving target by (speed / kp) degrees
+                base = 0.0 if abs(self.err_deg) < a.deadband else a.kp * self.err_deg
+                rate = max(-a.max_rate, min(a.max_rate, base + self.pred.vel))
             else:
-                self.err_deg, rate = 0.0, 0.0  # target momentarily gone: hold heading, keep the override
+                if self.occluded_since is not None:
+                    self.pred_px = None  # prediction window is over: stop guessing, hold heading
+                self.err_deg, rate = 0.0, 0.0  # gone for good (so far): hold heading, keep the override
             fc.yaw_rate(rate)
             self.last_cmd = rate
             self.hist.append((now, self.err_deg, rate))
-            if now - self.t_seen > a.lost_timeout:
+            # prediction window first, then the normal lost timeout: the mission is only handed back if the
+            # target has not come back by then
+            if now - self.t_seen > a.lost_timeout + (a.predict_seconds if can_predict and self.pred.valid else 0.0):
                 self.last_cmd = 0.0
+                self.occluded_since, self.pred_px = None, None
                 fc.say("VISUAL TRACK: target lost - RESUMING MISSION")
                 fc.end_override()
                 self._go(RESUME)
@@ -413,6 +459,19 @@ def open_camera(src, w, h):
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, w)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
     return cap
+
+
+def draw_prediction(frame, px):
+    """Dashed marker where the hidden target is expected; an edge arrow if that is off the picture."""
+    h, w = frame.shape[:2]
+    col = (0, 200, 255)
+    x = int(max(24, min(w - 24, px)))
+    for y in range(60, h - 90, 14):
+        cv2.line(frame, (x, y), (x, y + 7), col, 2)
+    if px < 24 or px > w - 24:
+        d = -1 if px < 24 else 1
+        cv2.arrowedLine(frame, (x - d * 18, h // 2), (x + d * 6, h // 2), col, 3, tipLength=0.5)
+    cv2.putText(frame, "predicted", (max(4, min(w - 90, x - 38)), 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, col, 1, cv2.LINE_AA)
 
 
 def lock_brackets(frame, t, col, pad=10, arm=16):
@@ -493,7 +552,9 @@ def draw_hud(frame, trk, fc, target, args, fps, extra=()):
     h, w = frame.shape[:2]
     col = STATE_COLOUR[trk.state]
     cv2.rectangle(frame, (0, 0), (w, 34), col, -1)
-    cv2.putText(frame, STATE_TEXT[trk.state], (10, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
+    hidden = trk.state == LOCKED and trk.occluded_since is not None
+    cv2.putText(frame, "TARGET HIDDEN  -  predicting where it went" if hidden else STATE_TEXT[trk.state], (10, 24),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
     cv2.line(frame, (w // 2, h // 2 - 14), (w // 2, h // 2 + 14), (255, 255, 255), 1)
     cv2.line(frame, (w // 2 - 14, h // 2), (w // 2 + 14, h // 2), (255, 255, 255), 1)
     if target:
@@ -509,6 +570,8 @@ def draw_hud(frame, trk, fc, target, args, fps, extra=()):
         else:
             label = f"target {target.conf:.2f}" if target.conf != 1.0 else "target detected"
             cv2.putText(frame, label, (target.x, max(14, target.y - 6)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, tcol, 1, cv2.LINE_AA)
+    if hidden and trk.pred_px is not None:
+        draw_prediction(frame, trk.pred_px)
     draw_controller(frame, trk, args, target)
     draw_cue_banner(frame, trk)
     yaw = f"{fc.yaw_deg:5.1f}" if fc.yaw_deg is not None else "  ?  "
@@ -585,13 +648,21 @@ def parse_args(argv=None):
     g.add_argument("--mock-hold", type=float, default=25.0,
                    help="hide the target this long after the lock started, so the mission resumes (0 = never)")
     g.add_argument("--mock-hide", type=float, default=20.0, help="seconds the target stays hidden (default 20)")
+    g.add_argument("--mock-occluder", type=float, default=None, metavar="BEARING",
+                   help="put a tree trunk at this compass bearing; the swaying target disappears behind it "
+                        "(a blind spot to test --predict-seconds against)")
+    g.add_argument("--mock-occluder-width", type=float, default=24.0, help="trunk width in degrees (default 24)")
     g = ap.add_argument_group("behaviour")
     g.add_argument("--confirm-frames", type=int, default=5, help="consecutive hits before overriding")
     g.add_argument("--rumble", action="store_true",
                    help="pilot feedback: buzz an XInput gamepad on detect / lock / lost / resume / pilot-takeover")
     g.add_argument("--no-buzzer", action="store_true",
                    help="ArduPilot: don't play the cue tunes on the FC's buzzer (they are on by default)")
-    g.add_argument("--lost-timeout", type=float, default=3.0, help="seconds without target before resuming")
+    g.add_argument("--predict-seconds", type=float, default=2.0,
+                   help="blind-spot tracking: when the target vanishes, keep yawing toward where it is predicted "
+                        "to be for up to this long (0 = off: just hold heading). Needs the FC heading.")
+    g.add_argument("--lost-timeout", type=float, default=3.0,
+                   help="seconds without target before resuming (counted after --predict-seconds when prediction is on)")
     g.add_argument("--cooldown", type=float, default=3.0, help="seconds before a new trigger is allowed")
     g.add_argument("--kp", type=float, default=1.0, help="yaw rate (deg/s) per degree of error")
     g.add_argument("--max-rate", type=float, default=45.0, help="yaw rate limit, deg/s")

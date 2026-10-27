@@ -185,6 +185,7 @@ def render_report(samples, events, args):
     bp = hp + np.array([wrap180(b - h) if np.isfinite(b) and np.isfinite(h) else np.nan
                         for b, h in zip(bearing, heading)])
     lock_spans = [(a, b) for a, b, k, _ in _runs(samples, lambda s: s[1] == "LOCKED") if k]
+    hidden_spans = [(a, b) for a, b, k, _ in _runs(samples, lambda s: s[1] == "LOCKED" and not s[9]) if k]
 
     # ---- header ---------------------------------------------------------------------------------
     cv2.putText(img, "MaxGCS visual track - run report", (L, 34), cv2.FONT_HERSHEY_SIMPLEX, 0.9, INK, 2, cv2.LINE_AA)
@@ -244,6 +245,7 @@ def render_report(samples, events, args):
     pc_lim = max(10.0, float(np.ceil(ec.max() / 10.0) * 10.0))
     pc = _Panel(img, (L, 590, W - R, 820), tmax, -pc_lim, pc_lim)
     _shade(img, [pb.box, pc.box], lock_spans, tmax, (50, 50, 220))
+    _shade(img, [pb.box, pc.box], hidden_spans, tmax, (90, 90, 90), alpha=0.35)  # grey: target not visible
     pb.frame("heading and target bearing", "deg" + (", zoomed on lock" if zoom.any() else ""))
     if np.isfinite(bearing).any():
         pb.line(t, list(bp), TARGET_COL, 2)
@@ -293,5 +295,6 @@ def render_report(samples, events, args):
         cv2.putText(img, name, (x + 3, 248 + row * 13), cv2.FONT_HERSHEY_SIMPLEX, 0.45, col, 1, cv2.LINE_AA)
     cv2.putText(img, "dashed lines = cues sent to the pilot (screen banner, FC buzzer, gamepad rumble)",
                 (L, H - 40), cv2.FONT_HERSHEY_SIMPLEX, 0.45, FAINT, 1, cv2.LINE_AA)
-    cv2.putText(img, "red shading = mission overridden and locked", (L, H - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.45, FAINT, 1, cv2.LINE_AA)
+    cv2.putText(img, "red shading = mission overridden and locked;  grey = target hidden while locked (tracker predicting)",
+                (L, H - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.45, FAINT, 1, cv2.LINE_AA)
     return img

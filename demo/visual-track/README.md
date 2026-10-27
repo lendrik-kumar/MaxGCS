@@ -175,6 +175,31 @@ Then **MaxGCS → MAVLink → UDP → port 14550**, and the tracker / `fc_check.
 `--connect udpin:0.0.0.0:14551`. Every FC message is copied to both; anything either sends goes to the FC.
 Tested against the simulated FC (`--fc udp:127.0.0.1:14560`); the serial side is not tested on hardware.
 
+## Tracking through blind spots
+
+If the target slips behind a tree, a corner or another object, the tracker no longer just freezes and gives
+up. It keeps a running estimate of the target's **world bearing** (the drone's heading plus the angle of the
+target in the picture) and how fast that is changing. While the target is hidden it keeps turning toward
+where it is **predicted** to be, with the guessed speed fading out over a few seconds:
+
+- On screen: the banner changes to `TARGET HIDDEN - predicting where it went` and a dashed `predicted`
+  marker shows the expected position (an edge arrow if that is off the picture).
+- A detection is only accepted again if it is near the predicted spot, so someone else walking past cannot
+  steal the lock.
+- The mission is handed back only if the target has not reappeared after `--predict-seconds` **plus**
+  `--lost-timeout`. `--predict-seconds 0` switches prediction off (the old hold-heading behaviour).
+- The report shades every blind spot grey.
+
+```powershell
+.\.venv\Scripts\python visual_track.py --fc ardupilot --connect udpin:0.0.0.0:14551 --source mock --detector color --color orange --mock-sway 25 --mock-period 10 --mock-occluder 60 --mock-hold 0 --record --report
+```
+
+`--mock-occluder BEARING` (with `--mock-occluder-width`) puts a tree trunk in the simulated world; the swaying
+target goes behind it again and again. `selftest.py occlusion` runs that scene twice on the simulated
+ArduPilot, prediction on and off: with prediction the heading stayed about 12-13 deg from the hidden target
+against about 16-18 deg without (the exact gap varies from run to run). It needs the FC's heading, which
+the ArduPilot and INAV links both provide.
+
 ## Seeing what happened afterwards
 
 The console only prints text, so two options save something you can look at once the run is over. Give

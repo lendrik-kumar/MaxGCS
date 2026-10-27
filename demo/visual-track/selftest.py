@@ -304,6 +304,157 @@ def run_mockcam():
     return all(checks)
 
 
+def run_predict():
+    """Blind-spot tracking without hardware: the predictor's maths, then the tracker keeping its lock."""
+    print("\n=========== PREDICT - tracking through blind spots")
+    from predictor import BearingPredictor, wrap180
+    checks = []
+
+    def check(name, ok, detail=""):
+        checks.append(ok)
+        print(f"[{'PASS' if ok else 'FAIL'}] {name} {detail}")
+
+    p = BearingPredictor()
+    for i in range(60):
+        p.update(50 + 10 * (i * 0.05), i * 0.05)
+    check("filter learns a 10 deg/s target speed", 8.5 < p.vel < 11.5, f"({p.vel:.1f} deg/s)")
+    start, t0 = p.est, 59 * 0.05
+    for i in range(20):
+        p.coast(t0 + (i + 1) * 0.05)
+    moved = wrap180(p.est - start)
+    check("coasting for 1 s carries on in the same direction", 6.5 < moved < 10.0, f"(moved {moved:+.1f} deg)")
+    check("...and the speed fades while it cannot see the target", 0 < p.vel < 9.0, f"({p.vel:.1f} deg/s)")
+    p = BearingPredictor()
+    for i in range(40):
+        p.update((355 + 10 * i * 0.05) % 360, i * 0.05)
+    check("works across north (359 -> 1 deg)", 8.0 < p.vel < 12.0, f"({p.vel:.1f} deg/s, est {p.est:.1f})")
+
+    # the tracker in a closed loop with a fake drone that turns as commanded (NullLink integrates yaw)
+    a = vt.parse_args(["--no-fc", "--headless", "--confirm-frames", "2", "--lost-timeout", "1.0",
+                       "--cooldown", "0", "--predict-seconds", "1.5", "--kp", "1.0"])
+    fc = vt.NullLink()
+    trk = vt.VisualTrack(fc, a)
+    fx = 320 / math.tan(math.radians(a.hfov) / 2)
+    t_start = time.monotonic()
+
+    def bearing(t):
+        return 10 + 12 * t  # a target walking round at 12 deg/s
+
+    def det_at(world):
+        rel = wrap180(world - fc.yaw_deg)
+        return vt.Det(int(320 + fx * math.tan(math.radians(rel))) - 20, 200, 40, 100)
+
+    def step(visible, far=False):
+        dets = []
+        if visible:
+            dets = [vt.Det(20, 200, 40, 100)] if far else [det_at(bearing(time.monotonic() - t_start))]
+        got = trk.update(dets, 640)
+        time.sleep(0.05)
+        return got
+
+    for _ in range(60):
+        step(True)
+    check("locked on the moving target", trk.state == vt.LOCKED, f"({trk.state})")
+    rates = []
+    for _ in range(20):  # 1 s hidden
+        step(False)
+        rates.append(trk.last_cmd)
+    check("hidden: still LOCKED, not given up", trk.state == vt.LOCKED and trk.occluded_since is not None)
+    check("hidden: keeps turning the way the target was going", all(r >= 0 for r in rates) and max(rates) > 2.0,
+          f"(rates {min(rates):+.1f}..{max(rates):+.1f} deg/s; holding heading would be 0)")
+    check("hidden: a predicted position is available for the display", trk.pred_px is not None)
+    got = step(True)
+    check("target back in the right place: lock kept, prediction cleared",
+          got is not None and trk.state == vt.LOCKED and trk.occluded_since is None)
+    for _ in range(6):
+        step(False)
+    got = step(True, far=True)
+    check("someone else far from the prediction is not taken as the target",
+          got is None and trk.occluded_since is not None)
+    t_gone = time.monotonic()
+    while trk.state == vt.LOCKED and time.monotonic() - t_gone < 6.0:
+        step(False)
+    gone = time.monotonic() - t_gone
+    check("gone for good: mission handed back after prediction window + lost timeout",
+          trk.state in (vt.RESUME, vt.PATROL) and 2.0 < gone < 3.4, f"(after {gone:.1f} s; expect about 1.5 + 1.0)")
+
+    a0 = vt.parse_args(["--no-fc", "--headless", "--confirm-frames", "2", "--lost-timeout", "1.0",
+                        "--cooldown", "0", "--predict-seconds", "0"])
+    trk0 = vt.VisualTrack(vt.NullLink(), a0)
+    for _ in range(10):
+        trk0.update([vt.Det(400, 200, 40, 100)], 640)
+        time.sleep(0.05)
+    for _ in range(10):
+        trk0.update([], 640)
+        time.sleep(0.05)
+    check("--predict-seconds 0 keeps the old behaviour (hold heading)",
+          trk0.state == vt.LOCKED and trk0.last_cmd == 0.0 and trk0.occluded_since is None)
+    return all(checks)
+
+
+def run_occlusion():
+    """A/B on the closed-loop simulated ArduPilot: the same swaying target passes behind a tree trunk again and
+    again; compare how well the heading stays on it with prediction on and off."""
+    print("\n=========== OCCLUSION - prediction on vs off, target swaying behind a tree trunk")
+    from pymavlink import mavutil  # noqa: F401
+    checks = []
+
+    def check(name, ok, detail=""):
+        checks.append(ok)
+        print(f"[{'PASS' if ok else 'FAIL'}] {name} {detail}")
+
+    def one(predict_s, base):
+        gcs_port, trk_port, fc_port = base + 1, base + 2, base
+        log = {"modes": [], "yaw": [], "text": [], "pos": []}
+        stop = threading.Event()
+        obs = MavObserver(gcs_port)
+        mock = subprocess.Popen([sys.executable, os.path.join(HERE, "mock_ardupilot.py"), "--port", str(fc_port),
+                                 "--size", "40", "--out", f"127.0.0.1:{gcs_port}", f"127.0.0.1:{trk_port}"],
+                                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        time.sleep(1.5)
+        threading.Thread(target=obs.run, args=(log, stop), daemon=True).start()
+        args = vt.parse_args(["--fc", "ardupilot", "--connect", f"udpin:0.0.0.0:{trk_port}", "--source", "mock",
+                              "--detector", "color", "--color", "orange", "--headless", "--kp", "1.5",
+                              "--mock-sway", "25", "--mock-period", "10", "--mock-occluder", "60", "--mock-hold", "0",
+                              "--predict-seconds", str(predict_s), "--lost-timeout", "3", "--duration", "62"])
+        try:
+            trk = vt.run(args)
+        finally:
+            time.sleep(0.6)
+            stop.set()
+            mock.terminate()
+            mock.communicate(timeout=5)
+        seq = [m for _, m in log["modes"]]
+        on = next((t for t, m in log["modes"] if m == "OVERRIDE"), None)
+        off = next((t for t, m in log["modes"] if on is not None and t > on and m != "OVERRIDE"), log["yaw"][-1][0])
+        cam, abs0 = trk.cam, log["abs0"]
+        errs = []
+        for t, y in log["yaw"]:
+            if on is not None and on + 8.0 <= t <= off - 1.0:
+                b = cam.target_bearing(abs0 + t)
+                if abs((b - 60 + 180) % 360 - 180) < 16.0:  # the target is (at least partly) behind the trunk
+                    errs.append(abs((y - b + 180) % 360 - 180))
+        return trk, seq, errs
+
+    trk_on, seq_on, e_on = one(2.0, 14740)
+    trk_off, seq_off, e_off = one(0.0, 14750)
+    print(f"seen by the independent observer, prediction on:  {' -> '.join(seq_on)}")
+    print(f"seen by the independent observer, prediction off: {' -> '.join(seq_off)}")
+    check("each run overrode the mission once and held it (no early give-up, no re-trigger)",
+          seq_on.count("OVERRIDE") == 1 and seq_off.count("OVERRIDE") == 1)
+    check("the target really did go behind the trunk, several times", trk_on.occlusions >= 3,
+          f"({trk_on.occlusions} blind spots handled)")
+    if len(e_on) < 20 or len(e_off) < 20:
+        check("enough samples behind the trunk to compare", False, f"(on {len(e_on)}, off {len(e_off)})")
+        return False
+    m_on, m_off = sum(e_on) / len(e_on), sum(e_off) / len(e_off)
+    print(f"heading error while the target is behind the trunk (mean): prediction ON {m_on:.1f} deg, OFF {m_off:.1f} deg "
+          f"({len(e_on)} / {len(e_off)} samples)")
+    check("prediction keeps the heading closer to the hidden target", m_on < 0.9 * m_off,
+          f"(on {m_on:.1f} deg vs off {m_off:.1f} deg)")
+    return all(checks)
+
+
 def run_cues():
     """Pilot cues without hardware: rumble patterns on a fake gamepad, and which tracker event fires when."""
     print("\n=========== CUES - gamepad rumble patterns and tracker events")
@@ -341,7 +492,8 @@ def run_cues():
               f"({buzzes} buzzes, ends {pad.calls[-1]})")
     check("the five events feel different", len({tuple(p) for p in haptics.PATTERNS.values()}) == 5)
 
-    a = vt.parse_args(["--no-fc", "--headless", "--confirm-frames", "2", "--lost-timeout", "1.0", "--cooldown", "0"])
+    a = vt.parse_args(["--no-fc", "--headless", "--confirm-frames", "2", "--lost-timeout", "1.0", "--cooldown", "0",
+                       "--predict-seconds", "0"])
     fc, events = vt.NullLink(), []
     trk = vt.VisualTrack(fc, a)
     trk.cues.append(events.append)
@@ -366,8 +518,18 @@ def run_cues():
 
 
 if __name__ == "__main__":
-    which = sys.argv[1:] or ["inav", "ardupilot", "mockcam", "cues"]
+    which = sys.argv[1:] or ["inav", "ardupilot", "mockcam", "cues", "predict", "occlusion"]
     ok = True
+    if "predict" in which:
+        r = run_predict()
+        print("RESULT:", "ALL PASS" if r else "FAILURES")
+        ok = ok and r
+        which = [w for w in which if w != "predict"]
+    if "occlusion" in which:
+        r = run_occlusion()
+        print("RESULT:", "ALL PASS" if r else "FAILURES")
+        ok = ok and r
+        which = [w for w in which if w != "occlusion"]
     if "cues" in which:
         r = run_cues()
         print("RESULT:", "ALL PASS" if r else "FAILURES")

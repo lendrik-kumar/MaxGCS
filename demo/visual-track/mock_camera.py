@@ -42,6 +42,7 @@ class MockCamera:
         self.hfov = a.hfov
         self.base, self.sway, self.period = a.mock_bearing, a.mock_sway, a.mock_period
         self.hold, self.hide = a.mock_hold, a.mock_hide
+        self.occ, self.occ_width = a.mock_occluder, a.mock_occluder_width  # None = no occluder
         self.t0 = time.monotonic()
         self.locked_since = None
         self.hidden_until = 0.0
@@ -121,4 +122,11 @@ class MockCamera:
                 for wy in range(y1 + 12, y2 - 10, 24):  # windows
                     for wx in range(x1 + 8, x2 - 10, 18):
                         cv2.rectangle(img, (wx, wy), (wx + 8, wy + 12), (20, 70, 170), -1)
+        if self.occ is not None:  # a tree trunk in front of the target: the target goes out of sight behind it
+            rel = wrap180(self.occ - heading)
+            if abs(rel) < self.hfov / 2 + self.occ_width:
+                x1 = int(self._x(rel - self.occ_width / 2))
+                x2 = int(self._x(rel + self.occ_width / 2))
+                cv2.rectangle(img, (x1, hz - 175), (x2, hz + 85), (35, 55, 35), -1)
+                cv2.rectangle(img, (x1, hz - 175), (x2, hz + 85), (20, 35, 20), 2)
         return img
