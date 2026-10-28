@@ -143,11 +143,51 @@
     "radar": "Radar",
     "airspace": "Espace aérien",
     "video": "Vidéo",
+    "prearm": "Pré-armement",
     "control": "Pilotage",
     "rc": "RC",
     "recordings": "Enregistrements",
     "closePanel": "Fermer le panneau",
     "openPanel": "Ouvrir le panneau"
+  },
+  "prearm": {
+    "title": "Contrôle pré-armement",
+    "run": "Lancer le contrôle",
+    "running": "Vérification...",
+    "notConnected": "Connectez d'abord un contrôleur de vol.",
+    "intro": "Demande au contrôleur de vol d'exécuter ses propres contrôles de pré-armement maintenant et explique ce qui empêche l'armement. Rien n'est armé.",
+    "verdict": {
+      "idle": "PAS ENCORE VÉRIFIÉ",
+      "running": "VÉRIFICATION...",
+      "ready": "PRÊT À ARMER",
+      "blocked": "NON PRÊT - L'ARMEMENT SERAIT REFUSÉ",
+      "armed": "ARMÉ",
+      "unsupported": "CONTRÔLE INDISPONIBLE",
+      "error": "ÉCHEC DU CONTRÔLE"
+    },
+    "detail": {
+      "running": "En attente de la réponse du contrôleur de vol.",
+      "ready": "Le contrôleur de vol a exécuté tous ses contrôles de pré-armement, aucun n'a échoué.",
+      "blocked": "{count} problème(s) à corriger avant que le véhicule ne s'arme.",
+      "armed": "Le véhicule est armé. Les contrôles de pré-armement ne s'appliquent qu'à l'arrêt.",
+      "unsupported": "Ce firmware ne peut pas lancer le contrôle à la demande et n'a rien signalé récemment."
+    },
+    "lastChecked": "Dernier contrôle {time}",
+    "fcSaid": "Le contrôleur de vol a dit",
+    "why": "Pourquoi :",
+    "fix": "Comment corriger :",
+    "noMessages": "Le contrôleur de vol indique des échecs mais n'a envoyé aucun message. Réessayez dans quelques secondes ou appuyez sur ARM.",
+    "footer": "Le contrôle s'exécute sur le contrôleur de vol lui-même. Il lit et signale, mais n'arme jamais le véhicule.",
+    "live": {
+      "armed": "Armé",
+      "mode": "Mode",
+      "gps": "GPS",
+      "satellites": "satellites",
+      "battery": "Batterie",
+      "ok": "OK",
+      "bad": "DÉFAUT",
+      "off": "absent"
+    }
   },
   "rc": {
     "title": "Commande RC",

@@ -64,6 +64,19 @@ pub fn mav_arm(arm: bool, force: bool, state: State<'_, AppState>) -> Result<(),
     )
 }
 
+/// Run the FC's pre-arm checks on demand (`MAV_CMD_RUN_PREARM_CHECKS`; ArduPilot 4.1+ and PX4). Returns
+/// "passed" or "failed". The reasons for a failure are not part of the answer: the FC reports each one as a
+/// "PreArm: …" STATUSTEXT (event `mavlink-statustext`), which the Pre-arm panel collects around this call.
+/// Errors: not MAVLink / not connected, the vehicle is armed, the firmware lacks the command, or no ack.
+#[tauri::command(async)]
+pub fn mav_run_prearm_checks(state: State<'_, AppState>) -> Result<String, String> {
+    let (cmd_tx, fc_sysid) = mav_handle(&state)?;
+    match control::run_prearm_checks(&cmd_tx, fc_sysid)? {
+        control::PrearmOutcome::Passed => Ok("passed".into()),
+        control::PrearmOutcome::Failed => Ok("failed".into()),
+    }
+}
+
 /// Take off to `altitude` (m, relative to home) via `MAV_CMD_NAV_TAKEOFF`.
 #[tauri::command(async)]
 pub fn mav_takeoff(altitude: f32, state: State<'_, AppState>) -> Result<(), String> {

@@ -46,6 +46,7 @@
   import MavCommandPanel from "$lib/components/control/MavCommandPanel.svelte";
   import RcControlPanel from "$lib/components/control/RcControlPanel.svelte";
   import VideoPanel from "$lib/components/video/VideoPanel.svelte";
+  import PrearmPanel from "$lib/components/prearm/PrearmPanel.svelte";
   import RecordingsPanel from "$lib/components/video/RecordingsPanel.svelte";
   import RadarPanel from "$lib/components/RadarPanel.svelte";
   import AirspaceManagerPanel from "$lib/components/AirspaceManagerPanel.svelte";
@@ -704,6 +705,7 @@
   // Solid flat movie camera (Video): two reels + body + lens funnel.
   const ICON_VIDEO = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="7" cy="7" r="2.9"/><circle cx="12.6" cy="7" r="2.9"/><rect x="2.5" y="9.5" width="13" height="9" rx="1.6"/><path d="M15.5 12 21.5 9.5V18.5L15.5 16Z"/></svg>';
   // Radar dish on a mast with two sweep arcs (Radar / foreign-vehicle tracking).
+  const ICON_PREARM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4.5 6v5.5c0 4.5 3.1 8 7.5 9.5 4.4-1.5 7.5-5 7.5-9.5V6L12 3Z"/><path d="M8.7 12.2l2.3 2.4 4.4-4.8"/></svg>';
   // Stylised radar scope: outer ring + inner range ring + sweep line + contact blips.
   const ICON_RADAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.3"/><path d="M12 12 18.7 6.4"/><circle cx="17.6" cy="9.4" r="1.15" fill="currentColor" stroke="none"/><circle cx="7.6" cy="15.4" r="0.85" fill="currentColor" stroke="none"/><circle cx="9.4" cy="6.8" r="0.85" fill="currentColor" stroke="none"/></svg>';
 
@@ -741,6 +743,7 @@
     { id: "uav-info", label: () => $t('nav.uavInfo'), icon: ICON_UAV_INFO },
     { id: "mission", label: () => $t('nav.mission'), icon: ICON_MISSION },
     { id: "control", label: () => $t('nav.control'), icon: ICON_CONTROL },
+    { id: "prearm", label: () => $t('nav.prearm'), icon: ICON_PREARM },
     { id: "rc-control", label: () => $t('nav.rc'), icon: ICON_RC },
     { id: "terrain", label: () => $t('nav.terrain'), icon: ICON_TERRAIN },
     { id: "logbook", label: () => $t('nav.logbook'), icon: ICON_LOGBOOK },
@@ -2917,6 +2920,8 @@
       <MissionPanel />
     {:else if activeTab === 'control'}
       <MavCommandPanel />
+    {:else if activeTab === 'prearm'}
+      <PrearmPanel />
     {:else if activeTab === 'rc-control'}
       <RcControlPanel />
     {:else if activeTab === 'radar'}

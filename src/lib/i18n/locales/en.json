@@ -154,11 +154,247 @@
     "radar": "Radar",
     "airspace": "Airspace",
     "video": "Video",
+    "prearm": "Pre-arm",
     "control": "Control",
     "rc": "RC",
     "recordings": "Recordings",
     "closePanel": "Close panel",
     "openPanel": "Open panel"
+  },
+  "prearm": {
+    "title": "Pre-arm check",
+    "run": "Run pre-arm check",
+    "running": "Checking...",
+    "notConnected": "Connect to a flight controller first.",
+    "intro": "Asks the flight controller to run its own pre-arm checks right now and explains anything that would stop it arming. Nothing is armed.",
+    "verdict": {
+      "idle": "NOT CHECKED YET",
+      "running": "CHECKING...",
+      "ready": "READY TO ARM",
+      "blocked": "NOT READY - ARMING WOULD BE REFUSED",
+      "armed": "ARMED",
+      "unsupported": "CHECK NOT AVAILABLE",
+      "error": "CHECK FAILED"
+    },
+    "detail": {
+      "running": "Waiting for the flight controller's answer.",
+      "ready": "The flight controller ran all its pre-arm checks and none failed.",
+      "blocked": "{count} problem(s) must be fixed before the vehicle will arm.",
+      "armed": "The vehicle is armed. Pre-arm checks only apply while disarmed.",
+      "unsupported": "This firmware cannot run the check on demand, and it has reported nothing wrong recently."
+    },
+    "lastChecked": "Last checked {time}",
+    "fcSaid": "The flight controller said",
+    "why": "Why:",
+    "fix": "How to fix:",
+    "noMessages": "The flight controller says some checks failed but sent no message. Try again in a few seconds, or press ARM so it lists them.",
+    "footer": "The check runs on the flight controller itself. It reads and reports; it never arms the vehicle.",
+    "live": {
+      "armed": "Armed",
+      "mode": "Mode",
+      "gps": "GPS",
+      "satellites": "satellites",
+      "battery": "Battery",
+      "ok": "OK",
+      "bad": "FAULT",
+      "off": "not present"
+    },
+    "inavGeneric": {
+      "why": "INAV reports this as an arming blocker.",
+      "fix": "Check INAV Configurator (Setup, Sensors) and the CLI command 'status' for details."
+    },
+    "rules": {
+      "gps": {
+        "title": "GPS has no usable position",
+        "why": "ArduPilot needs a good 3D GPS fix (normally 6 or more satellites and a low HDOP) before it will arm in any mode that uses position (Loiter, Auto, Guided, RTL). The GPS has no fix yet, the fix is poor, or the position is jumping.",
+        "fix": "Take the vehicle outdoors with a clear view of the sky and wait 1-3 minutes. Check the GPS cable and that its serial port is set to GPS (SERIALn_PROTOCOL = 5, GPS1_TYPE = 1). Keep the GPS away from power wires and the camera or ESC wiring."
+      },
+      "home": {
+        "title": "Waiting for a home position",
+        "why": "The flight controller sets Home from the first good GPS position. Until it has one it cannot plan a return-to-launch, so it refuses to arm.",
+        "fix": "Wait for a 3D GPS fix: Home is set automatically. Indoors with no GPS this check cannot pass."
+      },
+      "compass": {
+        "title": "Compass problem",
+        "why": "The compass (magnetometer) is missing, not calibrated, disagrees with a second compass or the gyro, or sees an unusually strong magnetic field (metal, motors or power wires nearby).",
+        "fix": "Move away from metal, cars and rebar, then run the compass calibration (Setup). If there are two compasses, calibrate both and keep the compass/GPS module away from power cables."
+      },
+      "gyro": {
+        "title": "Gyro problem",
+        "why": "The gyroscopes have not finished calibrating, or two gyros disagree. This usually means the board was moved while it powered up.",
+        "fix": "Power-cycle with the vehicle completely still on a flat surface and wait for calibration to finish. If it keeps happening, check the board mounting and vibration."
+      },
+      "accel": {
+        "title": "Accelerometer or level problem",
+        "why": "The accelerometers are not calibrated, disagree with each other, or the vehicle was not level when it started.",
+        "fix": "Run the accelerometer calibration (all six positions), then power-cycle on a level surface."
+      },
+      "baro": {
+        "title": "Barometer problem",
+        "why": "The barometer is unhealthy, or its altitude disagrees with the GPS/EKF estimate. Light, prop wash, wind or a sudden temperature change on the sensor can cause that.",
+        "fix": "Cover the barometer with foam to shield it from light and wind, let the board warm up for a minute, then check again. If it persists, reboot the board."
+      },
+      "ekf": {
+        "title": "Position / attitude estimate not ready",
+        "why": "The Extended Kalman Filter (EKF), which fuses gyro, accelerometer, compass, barometer and GPS, is not confident yet or its sensors disagree (roll, pitch or yaw inconsistent).",
+        "fix": "Keep the vehicle still and wait for the EKF to initialise (about 30 seconds after a good GPS fix). Fix any gyro, compass or GPS problems listed here first; this message usually clears by itself."
+      },
+      "battery": {
+        "title": "Battery problem",
+        "why": "The measured battery voltage or remaining capacity is below the arming minimum set in the flight controller, or the battery monitor is not reporting.",
+        "fix": "Connect a fully charged battery. Check BATT_MONITOR, the voltage-sense wiring and the arming limits (BATT_ARM_VOLT, BATT_ARM_MAH). Powering the board from USB alone often triggers this on the bench; that is expected."
+      },
+      "throttle": {
+        "title": "Throttle problem",
+        "why": "The throttle channel is not configured, is below the failsafe level, or the stick is not at minimum.",
+        "fix": "Switch the transmitter on, put the throttle stick fully down and run the radio calibration (Setup, Radio). Check FS_THR_VALUE."
+      },
+      "rc": {
+        "title": "No radio (RC) problem",
+        "why": "The flight controller is not receiving a valid RC signal (receiver unplugged, transmitter off, wrong protocol), a radio failsafe is active, or the radio is not calibrated.",
+        "fix": "Switch the transmitter on, check the receiver wiring and RC protocol, bind if needed, then run the radio calibration. For a bench test without a radio you can relax the RC arming check (ARMING_CHECK); never do that for flight."
+      },
+      "safety": {
+        "title": "Safety switch not pressed",
+        "why": "This board has a hardware safety switch that must be pressed (LED solid) before the motors can arm.",
+        "fix": "Press and hold the safety button until the LED is solid, or disable it with BRD_SAFETYENABLE if you do not use one."
+      },
+      "fence": {
+        "title": "Geofence problem",
+        "why": "A geofence is enabled but cannot be used yet (it needs a position fix), or the vehicle is already outside it.",
+        "fix": "Wait for GPS, or check the fence settings (FENCE_*) and move the vehicle inside the fence."
+      },
+      "mode": {
+        "title": "This flight mode cannot be armed",
+        "why": "The current flight mode is not allowed to arm, for example a mode that needs GPS when there is no fix.",
+        "fix": "Switch to a mode that can arm (Stabilize, Alt Hold, or Loiter once GPS is good), then arm."
+      },
+      "motors": {
+        "title": "Motor or frame setup problem",
+        "why": "The frame type, motor outputs or ESC setup is not valid or not consistent.",
+        "fix": "Check FRAME_CLASS and FRAME_TYPE, the motor numbering and the ESC protocol/calibration (Setup, Mandatory Hardware)."
+      },
+      "logging": {
+        "title": "Logging problem",
+        "why": "The flight controller wants to log the flight but the SD card is missing, full or failing.",
+        "fix": "Insert a working SD card or free space, or change the logging settings (LOG_BACKEND_TYPE) if you do not need logs."
+      },
+      "terrain": {
+        "title": "Terrain data missing",
+        "why": "Terrain following is enabled but the terrain data for this area has not been loaded.",
+        "fix": "Keep the ground station connected so it can send the terrain data, or turn terrain following off."
+      },
+      "proximity": {
+        "title": "Distance sensor problem",
+        "why": "A rangefinder or proximity sensor is configured but is not healthy.",
+        "fix": "Check its wiring and settings, or disable it if you do not use it (RNGFND1_TYPE = 0)."
+      },
+      "internal": {
+        "title": "Internal error",
+        "why": "The flight controller detected an internal fault (memory, a scheduler overrun, a firmware mismatch).",
+        "fix": "Reboot the board. If it returns, re-flash the firmware and check the board for faults. Do not fly."
+      },
+      "params": {
+        "title": "Setting problem",
+        "why": "A parameter is out of range or two settings conflict.",
+        "fix": "Read the message for the parameter name and set a valid value (Setup, Full Parameter List)."
+      },
+      "generic": {
+        "title": "Pre-arm check failed",
+        "why": "The flight controller refused to arm for the reason shown, in its own words. MaxGCS has no specific explanation for this message.",
+        "fix": "Read the message carefully (ArduPilot's wiki page \"Pre-Arm Safety Checks\" lists them). Fix the cause, then run the check again."
+      }
+    },
+    "inav": {
+      "initialising": {
+        "why": "The flight controller is still starting up (sensors and navigation are initialising).",
+        "fix": "Wait a few seconds with the board still."
+      },
+      "armingBlocked": {
+        "why": "A general arming block is active and the FC gave no more specific reason.",
+        "fix": "Look at the other reasons listed, and the Setup / Sensors tabs and the CLI command 'status' in INAV Configurator."
+      },
+      "geozone": {
+        "why": "Geozones are configured and the aircraft is outside an allowed zone or has no position yet.",
+        "fix": "Move inside the allowed area or review the Geozone settings."
+      },
+      "failsafe": {
+        "why": "A failsafe is active, for example the radio link was lost.",
+        "fix": "Restore the radio link and check the failsafe settings and the receiver."
+      },
+      "notLevel": {
+        "why": "The aircraft is not level enough to arm.",
+        "fix": "Place it on a flat level surface and calibrate the accelerometer if needed."
+      },
+      "calibrating": {
+        "why": "A sensor is still calibrating, usually the gyro just after power-up.",
+        "fix": "Keep the aircraft perfectly still until it finishes."
+      },
+      "overloaded": {
+        "why": "The processor load is too high.",
+        "fix": "Lower the loop rate or turn off unused features, and check for a configuration problem."
+      },
+      "navUnsafe": {
+        "why": "Navigation is not safe to start, for example there is no GPS fix or no valid home or compass heading for a navigation mode.",
+        "fix": "Wait for a 3D GPS fix with enough satellites, check the compass, or arm without a navigation mode."
+      },
+      "compass": {
+        "why": "The compass is not calibrated or is unhealthy.",
+        "fix": "Calibrate the compass away from metal."
+      },
+      "accel": {
+        "why": "The accelerometer is not calibrated.",
+        "fix": "Run the accelerometer calibration in INAV Configurator (Calibration tab)."
+      },
+      "armSwitch": {
+        "why": "The arm switch was already on when the board powered up, so INAV refuses to arm until it is switched off and on again.",
+        "fix": "Turn the arm switch off, then on."
+      },
+      "hardware": {
+        "why": "A hardware sensor failure was detected.",
+        "fix": "Check the Sensors tab for the failed sensor, check wiring, and verify the firmware target matches the board."
+      },
+      "boxFailsafe": {
+        "why": "The FAILSAFE switch/mode is activated from the transmitter.",
+        "fix": "Turn the failsafe switch off."
+      },
+      "rcLink": {
+        "why": "No valid RC signal is received.",
+        "fix": "Switch the transmitter on and check the receiver wiring and protocol."
+      },
+      "throttle": {
+        "why": "The throttle stick is not at minimum.",
+        "fix": "Lower the throttle stick completely."
+      },
+      "cli": {
+        "why": "The CLI in INAV Configurator is open.",
+        "fix": "Exit the CLI (type exit) or reconnect."
+      },
+      "rollPitch": {
+        "why": "The roll/pitch sticks are not centred.",
+        "fix": "Centre the sticks."
+      },
+      "noPrearm": {
+        "why": "A pre-arm switch is configured but has not been used yet.",
+        "fix": "Toggle the PREARM switch."
+      },
+      "landingDetected": {
+        "why": "INAV thinks the aircraft has just landed and is blocking an immediate re-arm.",
+        "fix": "Disarm, wait a moment, then arm again."
+      },
+      "invalidSetting": {
+        "why": "A configuration setting is invalid.",
+        "fix": "Check the CLI command 'status' and fix the setting it names."
+      },
+      "pwmError": {
+        "why": "The motor/servo PWM outputs have an error, for example a timer conflict.",
+        "fix": "Check the output and timer mapping and the ESC protocol."
+      },
+      "oom": {
+        "why": "The flight controller ran out of memory.",
+        "fix": "Reduce enabled features or OSD elements, or re-flash the firmware."
+      }
+    }
   },
   "rc": {
     "title": "RC Control",

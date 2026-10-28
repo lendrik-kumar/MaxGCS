@@ -154,11 +154,51 @@
     "radar": "Radar",
     "airspace": "Luftraum",
     "video": "Video",
+    "prearm": "Pre-Arm",
     "control": "Steuerung",
     "rc": "RC",
     "recordings": "Aufnahmen",
     "closePanel": "Panel schließen",
     "openPanel": "Panel öffnen"
+  },
+  "prearm": {
+    "title": "Pre-Arm-Check",
+    "run": "Pre-Arm-Check starten",
+    "running": "Prüfe ...",
+    "notConnected": "Zuerst mit einem Flugcontroller verbinden.",
+    "intro": "Lässt den Flugcontroller seine eigenen Pre-Arm-Prüfungen jetzt ausführen und erklärt, was das Scharfschalten verhindert. Es wird nichts scharf geschaltet.",
+    "verdict": {
+      "idle": "NOCH NICHT GEPRÜFT",
+      "running": "PRÜFE ...",
+      "ready": "BEREIT ZUM SCHARFSCHALTEN",
+      "blocked": "NICHT BEREIT - SCHARFSCHALTEN WÜRDE ABGELEHNT",
+      "armed": "SCHARF",
+      "unsupported": "PRÜFUNG NICHT VERFÜGBAR",
+      "error": "PRÜFUNG FEHLGESCHLAGEN"
+    },
+    "detail": {
+      "running": "Warte auf die Antwort des Flugcontrollers.",
+      "ready": "Der Flugcontroller hat alle Pre-Arm-Prüfungen ausgeführt, keine ist fehlgeschlagen.",
+      "blocked": "{count} Problem(e) müssen behoben werden, bevor das Fahrzeug scharf schaltet.",
+      "armed": "Das Fahrzeug ist scharf. Pre-Arm-Prüfungen gelten nur im entschärften Zustand.",
+      "unsupported": "Diese Firmware kann die Prüfung nicht auf Abruf ausführen und hat zuletzt nichts gemeldet."
+    },
+    "lastChecked": "Zuletzt geprüft {time}",
+    "fcSaid": "Der Flugcontroller meldete",
+    "why": "Warum:",
+    "fix": "Lösung:",
+    "noMessages": "Der Flugcontroller meldet fehlgeschlagene Prüfungen, sendete aber keine Meldung. In ein paar Sekunden erneut versuchen oder ARM drücken.",
+    "footer": "Die Prüfung läuft auf dem Flugcontroller selbst. Sie liest und meldet, schaltet aber nie scharf.",
+    "live": {
+      "armed": "Scharf",
+      "mode": "Modus",
+      "gps": "GPS",
+      "satellites": "Satelliten",
+      "battery": "Akku",
+      "ok": "OK",
+      "bad": "FEHLER",
+      "off": "nicht vorhanden"
+    }
   },
   "rc": {
     "title": "RC-Steuerung",

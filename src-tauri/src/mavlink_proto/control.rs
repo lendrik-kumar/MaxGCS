@@ -59,6 +59,72 @@ pub fn send_command_long(
     result
 }
 
+/// Outcome of `MAV_CMD_RUN_PREARM_CHECKS`. The FC answers ACCEPTED when every pre-arm check passes and
+/// FAILED when at least one fails; the individual reasons arrive separately as "PreArm: …" STATUSTEXT.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PrearmOutcome {
+    Passed,
+    Failed,
+}
+
+/// Ask the FC to run its pre-arm checks now (`MAV_CMD_RUN_PREARM_CHECKS`) and wait for its answer.
+/// Unlike [`send_command_long`], a FAILED ack is a normal result here (the checks ran and found a
+/// problem), not an error. While armed the FC refuses (TEMPORARILY_REJECTED) since the checks only apply
+/// to a disarmed vehicle.
+pub fn run_prearm_checks(
+    cmd_tx: &mpsc::Sender<MavlinkCommand>,
+    fc_sysid: u8,
+) -> Result<PrearmOutcome, String> {
+    let command = MavCmd::MAV_CMD_RUN_PREARM_CHECKS;
+    let rx = register(cmd_tx)?;
+    let msg = MavMessage::COMMAND_LONG(COMMAND_LONG_DATA {
+        target_system: fc_sysid,
+        target_component: AUTOPILOT_COMPONENT,
+        command,
+        confirmation: 0,
+        param1: 0.0,
+        param2: 0.0,
+        param3: 0.0,
+        param4: 0.0,
+        param5: 0.0,
+        param6: 0.0,
+        param7: 0.0,
+    });
+    if let Err(e) = send(cmd_tx, msg) {
+        unregister(cmd_tx);
+        return Err(e);
+    }
+    let deadline = Instant::now() + ACK_TIMEOUT;
+    let result = loop {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            break Err("No COMMAND_ACK from FC (timed out)".to_string());
+        }
+        match rx.recv_timeout(remaining) {
+            Ok(MavMessage::COMMAND_ACK(ack)) if ack.command == command => {
+                break match ack.result {
+                    MavResult::MAV_RESULT_ACCEPTED => Ok(PrearmOutcome::Passed),
+                    MavResult::MAV_RESULT_FAILED => Ok(PrearmOutcome::Failed),
+                    MavResult::MAV_RESULT_IN_PROGRESS => continue,
+                    MavResult::MAV_RESULT_TEMPORARILY_REJECTED => {
+                        Err("The vehicle is armed - pre-arm checks only run while disarmed".to_string())
+                    }
+                    MavResult::MAV_RESULT_UNSUPPORTED => {
+                        Err("This firmware cannot run pre-arm checks on demand".to_string())
+                    }
+                    MavResult::MAV_RESULT_DENIED => Err("Pre-arm check denied by the flight controller".to_string()),
+                    other => Err(format!("Pre-arm check rejected: {:?}", other)),
+                };
+            }
+            Ok(_) => continue,
+            Err(mpsc::RecvTimeoutError::Timeout) => break Err("No COMMAND_ACK from FC (timed out)".to_string()),
+            Err(mpsc::RecvTimeoutError::Disconnected) => break Err("MAVLink handler stopped".to_string()),
+        }
+    };
+    unregister(cmd_tx);
+    result
+}
+
 /// Send a `COMMAND_INT` and wait for its `COMMAND_ACK`. Used for commands carrying a global
 /// position (lat/lon as int32 × 1e7) — `DO_REPOSITION` — where COMMAND_LONG's f32 params would
 /// lose coordinate precision. `params` are param1..param4; `x`/`y` are lat/lon × 1e7; `z` is alt (m).
