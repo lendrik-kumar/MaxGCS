@@ -31,15 +31,7 @@ to the map.
 Built with [Tauri 2.0](https://tauri.app/) (Rust backend) and [Svelte 5](https://svelte.dev/)
 (TypeScript frontend).
 
-<p align="center">
-  <img alt="MaxGCS in 3D mode" src="docs/user/assets/main_interface_3d.png" width="820">
-</p>
 
-<p align="center">
-  <b><a href="https://b14ckyy.github.io/Kite-GC/">📖 Documentation</a></b>
-  &nbsp;·&nbsp;
-  <b><a href="https://github.com/b14ckyy/Kite-GC/releases">⬇️ Download</a></b>
-</p>
 
 ## Highlights
 
