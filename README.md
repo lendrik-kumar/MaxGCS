@@ -101,25 +101,25 @@ Everything you'd expect from a ground station:
 ## Download
 
 Grab the latest installer for your platform from the
-[**Releases**](https://github.com/b14ckyy/Kite-GC/releases) page, or [build from source](#building-from-source)
+[**Releases**](https://github.com/b14ckyy/Max-GCS/releases) page, or [build from source](#building-from-source)
 below.
 
 ## Documentation
 
-Full documentation is online at **[b14ckyy.github.io/Kite-GC](https://b14ckyy.github.io/Kite-GC/)**:
+Full documentation is online at **[b14ckyy.github.io/Kite-GC](https://b14ckyy.github.io/Max-GC/)**:
 
-- **Getting started:** [Installation](https://b14ckyy.github.io/Kite-GC/getting-started/installation/) ·
-  [First connection](https://b14ckyy.github.io/Kite-GC/getting-started/first-connection/) ·
-  [Quick tour](https://b14ckyy.github.io/Kite-GC/getting-started/quick-tour/)
+- **Getting started:** [Installation](https://b14ckyy.github.io/Max-GCS/getting-started/installation/) ·
+  [First connection](https://b14ckyy.github.io/Max-GCS/getting-started/first-connection/) ·
+  [Quick tour](https://b14ckyy.github.io/Max-GCS/getting-started/quick-tour/)
 - **Guides:** [Missions](https://b14ckyy.github.io/Kite-GC/guides/missions/) ·
   [Telemetry & display](https://b14ckyy.github.io/Kite-GC/guides/telemetry-and-display/) ·
-  [Logbook](https://b14ckyy.github.io/Kite-GC/guides/logbook/) · [Safety](https://b14ckyy.github.io/Kite-GC/guides/safety/) ·
-  [3D map](https://b14ckyy.github.io/Kite-GC/guides/map-3d/) · [Video](https://b14ckyy.github.io/Kite-GC/guides/video/)
-- **Trouble connecting?** [Troubleshooting → Connection](https://b14ckyy.github.io/Kite-GC/troubleshooting/connection/)
-- **For developers:** [Overview](https://b14ckyy.github.io/Kite-GC/for-developers/) ·
-  [Architecture](https://b14ckyy.github.io/Kite-GC/for-developers/architecture/) ·
-  [Building from source](https://b14ckyy.github.io/Kite-GC/for-developers/building/) ·
-  [Contributing](https://b14ckyy.github.io/Kite-GC/for-developers/contributing/)
+  [Logbook](https://b14ckyy.github.io/Kite-GC/guides/logbook/) · [Safety](https://b14ckyy.github.io/Max-GCS/guides/safety/) ·
+  [3D map](https://b14ckyy.github.io/Kite-GC/guides/map-3d/) · [Video](https://b14ckyy.github.io/Max-GCS/guides/video/)
+- **Trouble connecting?** [Troubleshooting → Connection](https://b14ckyy.github.io/Max-GCS/troubleshooting/connection/)
+- **For developers:** [Overview](https://b14ckyy.github.io/Max-GCS/for-developers/) ·
+  [Architecture](https://b14ckyy.github.io/Max-GCS/for-developers/architecture/) ·
+  [Building from source](https://b14ckyy.github.io/Max-GCS/for-developers/building/) ·
+  [Contributing](https://b14ckyy.github.io/Max-GCS/for-developers/contributing/)
 
 ## Support development
 
@@ -136,7 +136,7 @@ support its development, a donation is hugely appreciated — thank you! 💛
 - [Node.js](https://nodejs.org/) LTS (v20 or v24)
 - [Rust](https://rustup.rs/) (via rustup)
 - [just](https://github.com/casey/just) — the primary task runner
-- Platform toolchain & system dependencies — see the [Build Guide](https://b14ckyy.github.io/Kite-GC/for-developers/building/)
+- Platform toolchain & system dependencies — see the [Build Guide](https://b14ckyy.github.io/Max-GCS/for-developers/building/)
 
 ### Develop
 ```bash
@@ -153,8 +153,8 @@ just build-linux     # Linux release (on Linux)
 
 > **Tip:** install `just` for the best developer experience (see the `justfile` in the project root).
 > More detail — setup, troubleshooting and CI — is in the
-> [Building from source](https://b14ckyy.github.io/Kite-GC/for-developers/building/) guide, and the
-> [Architecture overview](https://b14ckyy.github.io/Kite-GC/for-developers/architecture/) explains how MaxGCS fits together.
+> [Building from source](https://b14ckyy.github.io/Max-GCS/for-developers/building/) guide, and the
+> [Architecture overview](https://b14ckyy.github.io/Max-GCS/for-developers/architecture/) explains how MaxGCS fits together.
 
 ## Contributing
 
