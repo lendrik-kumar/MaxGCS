@@ -38,17 +38,7 @@ const FMT_DATA_LEN: usize = 86;
 // ─── Format character → byte width ───────────────────────────────────────────
 
 fn fmt_char_width(c: u8) -> Option<usize> {
-    match c as char {
-        'b' | 'B' | 'M' => Some(1),
-        'h' | 'H' | 'c' | 'C' => Some(2),
-        'i' | 'I' | 'e' | 'E' | 'L' | 'f' => Some(4),
-        'd' | 'q' | 'Q' => Some(8),
-        'n' => Some(4),
-        'N' => Some(16),
-        'Z' => Some(64),
-        'a' => Some(64), // i16[32] RC array
-        _ => None,
-    }
+    flightlog_core::dataflash::field_size(c)
 }
 
 /// Expected total byte width of a format string (data only, no header).
@@ -353,6 +343,7 @@ fn decode_field_value(fmt_char: u8, data: &[u8]) -> DFValue {
         'E'       => DFValue::Float(le_u32!() as f64 / 100.0),
         'L'       => DFValue::Float(le_i32!() as f64 / 1e7),
         'f'       => DFValue::Float(le_f32!()),
+        'g'       => DFValue::Float(flightlog_core::dataflash::f16_to_f32(le_u16!()) as f64),
         'd'       => DFValue::Float(le_f64!()),
         'q'       => DFValue::Int(le_i64!()),
         'Q'       => DFValue::UInt(le_u64!()),
@@ -1416,5 +1407,29 @@ fn csv_escape(s: &str) -> String {
         format!("\"{}\"", s.replace('"', "\"\""))
     } else {
         s.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn float16_field_does_not_drop_the_rest_of_the_message() {
+        let fmt = FmtDef {
+            type_id: 200,
+            record_length: 3 + 8 + 2 + 1,
+            name: "TEST".into(),
+            format: "QgB".into(),
+            columns: vec!["TimeUS".into(), "Half".into(), "After".into()],
+        };
+        let mut data = 42u64.to_le_bytes().to_vec();
+        data.extend_from_slice(&0x3e00u16.to_le_bytes()); // 1.5 as float16
+        data.push(7);
+
+        let msg = DataFlashScanner::decode_record(&fmt, &data).unwrap();
+        assert_eq!(msg.fields.len(), 3);
+        assert_eq!(msg.fields[1].1.as_f64(), Some(1.5));
+        assert_eq!(msg.fields[2].1.as_u64(), Some(7));
     }
 }
